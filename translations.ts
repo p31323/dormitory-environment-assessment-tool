@@ -1,4 +1,4 @@
-import { Translations, ChecklistId } from './types';
+import { Translations } from './types';
 
 export const translations: Translations = {
   'zh-TW': {

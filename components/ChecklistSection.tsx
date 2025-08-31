@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { ChecklistState, ChecklistId, ComplianceStatus, ChecklistItem, TranslationMessages } from '../types';
+import { ChecklistState, ChecklistId, ComplianceStatus, ChecklistItem } from '../types';
 
 interface ChecklistSectionProps {
   title: string;
