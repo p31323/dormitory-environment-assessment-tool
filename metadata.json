@@ -1,0 +1,5 @@
+{
+  "name": "Dormitory Environment Assessment Tool",
+  "description": "An application to conduct and generate environmental assessment reports for foreign worker dormitories, covering safety, hygiene, and facilities.",
+  "requestFramePermissions": []
+}
