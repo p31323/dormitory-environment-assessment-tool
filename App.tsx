@@ -127,4 +127,166 @@ export default function App() {
     });
 
     setInvalidFields(missingFields);
+    return missingFieldLabels;
+  };
+
+  const generateReport = useCallback(() => {
+    const missingFieldLabels = validateForm();
+    if (missingFieldLabels.length > 0) {
+      setError(t('validationError'));
+      setValidationErrors(missingFieldLabels);
+      setValidationModalOpen(true);
+      setShowReport(false);
+      return;
+    }
+
+    setError('');
     
+    const newReportContent = buildReportContent(reportInfo, checklist, language);
+    setReportContent(newReportContent);
+    setShowReport(true);
+    setTimeout(() => {
+        reportContentRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, 100);
+
+  }, [reportInfo, checklist, language, t]);
+
+  const generateDocxBlob = useCallback(() => {
+    const selectedLangHtml = renderReportToHtmlString(reportContent);
+    let finalHtml = selectedLangHtml;
+    
+    // If current language is not Chinese, generate and append the Chinese report
+    if (language !== 'zh-TW') {
+        const chineseReportContent = buildReportContent(reportInfo, checklist, 'zh-TW');
+        const chineseHtml = renderReportToHtmlString(chineseReportContent);
+        finalHtml += `<p style="page-break-before: always;"></p>${chineseHtml}`;
+    }
+
+    const content = `<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body>${finalHtml}</body></html>`;
+    return (window as any).htmlDocx.asBlob(content);
+  }, [reportInfo, checklist, language, reportContent]);
+
+
+  const downloadWordReport = useCallback(() => {
+    if (typeof (window as any).saveAs === 'undefined') {
+      alert('Word generation library not loaded.');
+      return;
+    }
+    const blob = generateDocxBlob();
+    (window as any).saveAs(blob, `${reportInfo.checkDate.replace(/-/g, '')}-${t('wordFilename')}.docx`);
+  }, [reportInfo.checkDate, t, generateDocxBlob]);
+  
+  const handleShare = useCallback(async () => {
+    const blob = generateDocxBlob();
+    const fileName = `${reportInfo.checkDate.replace(/-/g, '')}-${t('wordFilename')}.docx`;
+    const file = new File([blob], fileName, {
+        type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    });
+
+    if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+        try {
+            await navigator.share({
+                files: [file],
+                title: t('shareTitle'),
+                text: t('shareText'),
+            });
+        } catch (error) {
+            const err = error as Error;
+            // User cancelled the share dialog. This is a normal flow, not an error.
+            if (err.name === 'AbortError') {
+                console.log('Share action cancelled by user.');
+            // The environment may block sharing, resulting in a permission error.
+            } else if (err.name === 'NotAllowedError' || err.message.toLowerCase().includes('permission denied')) {
+                console.error('Share permission denied:', err);
+                alert(t('sharePermissionDenied'));
+            } else {
+                // Handle other unexpected errors.
+                console.error('An unexpected error occurred during sharing:', err);
+                alert(`${t('shareGenericError')}: ${err.message}`);
+            }
+        }
+    } else {
+        alert(t('shareNotSupported'));
+    }
+  }, [generateDocxBlob, reportInfo.checkDate, t]);
+
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-blue-100 to-indigo-200 p-4">
+      <h1 className="text-4xl font-bold text-center text-indigo-800 mb-8 mt-4">{t('appTitle')}</h1>
+
+      <div className="max-w-4xl mx-auto mb-6 p-4 bg-white/70 rounded-lg shadow-md backdrop-blur-sm">
+        <label htmlFor="language-select" className="block text-sm font-medium text-gray-800 mb-2">{t('selectLanguage')}:</label>
+        <select
+          id="language-select"
+          value={language}
+          onChange={(e) => setLanguage(e.target.value as Language)}
+          className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md shadow-sm"
+        >
+          <option value="zh-TW">繁體中文</option>
+          <option value="en">English</option>
+          <option value="vi">Tiếng Việt (越南文)</option>
+          <option value="id">Bahasa Indonesia (印尼文)</option>
+          <option value="th">ภาษาไทย (泰文)</option>
+          <option value="ms">Bahasa Melayu (馬來文)</option>
+        </select>
+      </div>
+
+      <ReportInfoForm 
+        reportInfo={reportInfo} 
+        onReportInfoChange={handleReportInfoChange} 
+        error={error} 
+        t={t}
+        invalidFields={invalidFields}
+      />
+
+      <div className="max-w-4xl mx-auto bg-gray-50 p-6 rounded-lg shadow-xl">
+        <h2 className="text-2xl font-semibold mb-6 text-gray-800">{t('checklistTitle')}</h2>
+        {CHECKLIST_SECTIONS.map(section => (
+          <ChecklistSection
+            key={section.id}
+// Fix: Cast section.titleKey to string to match the type expected by the `t` function.
+            title={t(section.titleKey as string)}
+            prefix={section.prefix}
+            itemCount={section.itemCount}
+            checklistData={checklist}
+            onChecklistChange={handleChecklistChange}
+            checklistDescriptions={checklistDescriptions}
+            t={t}
+            invalidFields={invalidFields}
+          />
+        ))}
+        <button
+          onClick={generateReport}
+          className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-lg shadow-lg transform transition duration-300 ease-in-out hover:scale-105 focus:outline-none focus:ring-4 focus:ring-indigo-300 mt-8"
+        >
+          {t('generateReportButton')}
+        </button>
+      </div>
+
+      {showReport && (
+        <ReportDisplay
+          reportContent={reportContent}
+          reportContentRef={reportContentRef}
+          onDownloadWord={downloadWordReport}
+          onShare={handleShare}
+          onHideReport={() => setShowReport(false)}
+          t={t}
+        />
+      )}
+      
+      <Modal
+        isOpen={isValidationModalOpen}
+        onClose={() => setValidationModalOpen(false)}
+        title={t('validationAlertTitle')}
+      >
+        <p className="text-sm text-gray-500 mb-4">{t('validationModalIntro')}</p>
+        <ul className="list-disc list-inside space-y-1 text-left max-h-60 overflow-y-auto bg-gray-50 p-3 rounded-md">
+          {validationErrors.map((error, index) => (
+            <li key={index} className="text-sm text-gray-800">{error}</li>
+          ))}
+        </ul>
+      </Modal>
+    </div>
+  );
+}
