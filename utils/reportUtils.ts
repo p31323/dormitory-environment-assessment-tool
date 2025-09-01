@@ -7,20 +7,21 @@ export const buildReportContent = (
     checklist: ChecklistState,
     lang: Language
 ): ReportContent => {
-    const t = (key: string) => translations[lang].messages[key] || key;
-    const checklistDescriptions = translations[lang].checklistDescriptions;
-    
+    const t = (key: string) => translations[lang][key] || key;
+    // Fix: Add a helper to cast translations to string for cleaner code, resolving multiple type errors.
+    const ts = (key: string) => t(key) as string;
+    const checklistDescriptions = t('checklistDescriptions') as Record<ChecklistId, string>;
     const findingCategories = {
-        'A': t('categoryA'),
-        'B': t('categoryB'),
-        'C': t('categoryC'),
-        'D': t('categoryD'),
-        'E': t('categoryE'),
+        'A': ts('categoryA'),
+        'B': ts('categoryB'),
+        'C': ts('categoryC'),
+        'D': ts('categoryD'),
+        'E': ts('categoryE'),
     };
 
     let nonCompliantCount = 0;
     const findings: CategorizedFindings = {
-        [t('categoryA')]: [], [t('categoryB')]: [], [t('categoryC')]: [], [t('categoryD')]: [], [t('categoryE')]: [],
+        [ts('categoryA')]: [], [ts('categoryB')]: [], [ts('categoryC')]: [], [ts('categoryD')]: [], [ts('categoryE')]: [],
     };
 
     (Object.keys(checklist) as ChecklistId[]).forEach((id) => {
@@ -28,7 +29,7 @@ export const buildReportContent = (
         if (item.compliant === 'N') {
             nonCompliantCount++;
             const description = checklistDescriptions[id];
-            const detailedDescription = item.notes || t('noNotes');
+            const detailedDescription = item.notes || ts('noNotes');
             const finding = {
                 id,
                 description,
@@ -46,61 +47,61 @@ export const buildReportContent = (
 
     const newReportContent: ReportContent = [];
 
-    newReportContent.push({ type: 'heading', level: 2, content: t('reportTitle') });
+    newReportContent.push({ type: 'heading', level: 2, content: ts('reportTitle') });
 
-    const basicInfoContent = `<strong>${t('reportNumber')}:</strong> ${reportInfo.checkDate.replace(/-/g, '')}-DORM-001<br/>`
-        + `<strong>${t('checkDate')}:</strong> ${reportInfo.checkDate}<br/>`
-        + `<strong>${t('checker')}:</strong> ${reportInfo.checker}<br/>`
-        + `<strong>${t('dormNameAddress')}:</strong> ${reportInfo.dormNameAddress}<br/>`
-        + `<strong>${t('dormManager')}:</strong> ${reportInfo.dormManager}`;
+    const basicInfoContent = `<strong>${ts('reportNumber')}:</strong> ${reportInfo.checkDate.replace(/-/g, '')}-DORM-001<br/>`
+        + `<strong>${ts('checkDate')}:</strong> ${reportInfo.checkDate}<br/>`
+        + `<strong>${ts('checker')}:</strong> ${reportInfo.checker}<br/>`
+        + `<strong>${ts('dormNameAddress')}:</strong> ${reportInfo.dormNameAddress}<br/>`
+        + `<strong>${ts('dormManager')}:</strong> ${reportInfo.dormManager}`;
     newReportContent.push({ type: 'paragraph', content: basicInfoContent });
 
-    newReportContent.push({ type: 'heading', level: 3, content: t('overviewTitle') });
-    newReportContent.push({ type: 'paragraph', content: t('overviewContent') });
+    newReportContent.push({ type: 'heading', level: 3, content: ts('overviewTitle') });
+    newReportContent.push({ type: 'paragraph', content: ts('overviewContent') });
 
-    newReportContent.push({ type: 'heading', level: 3, content: t('findingsTitle') });
-    const findingsIntroContent = t('findingsIntro').replace('{count}', `<strong>${nonCompliantCount}</strong>`);
+    newReportContent.push({ type: 'heading', level: 3, content: ts('findingsTitle') });
+    const findingsIntroContent = ts('findingsIntro').replace('{count}', `<strong>${nonCompliantCount}</strong>`);
     newReportContent.push({ type: 'paragraph', content: findingsIntroContent });
 
-    const findingsHeaders = [t('findingsHeader1'), t('findingsHeader2'), t('findingsHeader3'), t('findingsHeader4'), t('findingsHeader5')];
+    const findingsHeaders = [ts('findingsHeader1'), ts('findingsHeader2'), ts('findingsHeader3'), ts('findingsHeader4'), ts('findingsHeader5')];
     const findingsRows: string[][] = [];
     if (nonCompliantCount > 0) {
         let findingNum = 1;
         Object.keys(findings).forEach(category => {
             findings[category].forEach(item => {
-                const cleanedDesc = item.description.replace(new RegExp(t('cleanupRegex'), 'g'), '').trim();
-                const row = [`${findingNum++}`, category, `${item.id} ${cleanedDesc}`, item.detailedDescription, t('statusNonCompliant')];
+                const cleanedDesc = item.description.replace(new RegExp(ts('cleanupRegex'), 'g'), '').trim();
+                const row = [`${findingNum++}`, category, `${item.id} ${cleanedDesc}`, item.detailedDescription, ts('statusNonCompliant')];
                 findingsRows.push(row);
             });
         });
     } else {
-        findingsRows.push(['1', t('categoryNone'), t('noNonCompliantItems'), 'N/A', t('statusCompliant')]);
+        findingsRows.push(['1', ts('categoryNone'), ts('noNonCompliantItems'), 'N/A', ts('statusCompliant')]);
     }
     newReportContent.push({ type: 'table', headers: findingsHeaders, rows: findingsRows });
 
-    newReportContent.push({ type: 'heading', level: 3, content: t('recommendationsTitle') });
-    const recommendationsHeaders = [t('recommendationsHeader1'), t('recommendationsHeader2'), t('recommendationsHeader3'), t('recommendationsHeader4'), t('recommendationsHeader5'), t('recommendationsHeader6')];
+    newReportContent.push({ type: 'heading', level: 3, content: ts('recommendationsTitle') });
+    const recommendationsHeaders = [ts('recommendationsHeader1'), ts('recommendationsHeader2'), ts('recommendationsHeader3'), ts('recommendationsHeader4'), ts('recommendationsHeader5'), ts('recommendationsHeader6')];
     const recommendationsRows: string[][] = [];
     if (nonCompliantCount > 0) {
         let actionNum = 1;
         Object.keys(findings).forEach(category => {
             findings[category].forEach(item => {
-                const cleanedDesc = item.description.replace(new RegExp(t('cleanupRegex'), 'g'), '').trim();
-                const row = [`${actionNum++}`, `${item.id} ${cleanedDesc}`, item.correctiveAction, item.responsiblePerson, '', t('statusPending')];
+                const cleanedDesc = item.description.replace(new RegExp(ts('cleanupRegex'), 'g'), '').trim();
+                const row = [`${actionNum++}`, `${item.id} ${cleanedDesc}`, item.correctiveAction, item.responsiblePerson, '', ts('statusPending')];
                 recommendationsRows.push(row);
             });
         });
     } else {
-        recommendationsRows.push(['1', t('noNonCompliantItems'), 'N/A', 'N/A', 'N/A', t('statusDone')]);
+        recommendationsRows.push(['1', ts('noNonCompliantItems'), 'N/A', 'N/A', 'N/A', ts('statusDone')]);
     }
     newReportContent.push({ type: 'table', headers: recommendationsHeaders, rows: recommendationsRows });
 
-    newReportContent.push({ type: 'heading', level: 3, content: t('conclusionTitle') });
-    const conclusionContent = t('conclusionContent')
-        .replace('{status}', nonCompliantCount === 0 ? t('conclusionStatusGood') : t('conclusionStatusImprovementsNeeded'));
+    newReportContent.push({ type: 'heading', level: 3, content: ts('conclusionTitle') });
+    const conclusionContent = ts('conclusionContent')
+        .replace('{status}', nonCompliantCount === 0 ? ts('conclusionStatusGood') : ts('conclusionStatusImprovementsNeeded'));
     newReportContent.push({ type: 'paragraph', content: conclusionContent });
 
-    const attachmentsHtml = `<strong>${t('attachmentsTitle')}:</strong><ul style="list-style-position: inside; margin-left: 20px; margin-top: 8px;"><li>${t('attachmentPhoto')}</li><li>${t('attachmentInterview')}</li></ul>`;
+    const attachmentsHtml = `<strong>${ts('attachmentsTitle')}:</strong><ul style="list-style-position: inside; margin-left: 20px; margin-top: 8px;"><li>${ts('attachmentPhoto')}</li><li>${ts('attachmentInterview')}</li></ul>`;
     newReportContent.push({ type: 'paragraph', content: attachmentsHtml });
 
     return newReportContent;

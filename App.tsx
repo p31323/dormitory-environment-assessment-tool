@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useCallback, useMemo } from 'react';
 import { 
   ReportInfo, 
@@ -53,11 +52,11 @@ export default function App() {
   const reportContentRef = useRef<HTMLDivElement>(null);
   
   const t = useCallback((key: string): string => {
-      return translations[language].messages[key] || key;
+      return translations[language][key] as string || key;
   }, [language]);
 
   const checklistDescriptions = useMemo(() => {
-    return translations[language].checklistDescriptions;
+    return translations[language].checklistDescriptions as Record<ChecklistId, string>;
   }, [language]);
 
   const handleReportInfoChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -184,7 +183,7 @@ export default function App() {
         type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
     });
 
-    if (navigator.share && typeof navigator.canShare === 'function' && navigator.canShare({ files: [file] })) {
+    if (navigator.share && typeof navigator.canShare === 'function' && (navigator as any).canShare({ files: [file] })) {
         try {
             await navigator.share({
                 files: [file],
@@ -246,7 +245,8 @@ export default function App() {
         {CHECKLIST_SECTIONS.map(section => (
           <ChecklistSection
             key={section.id}
-            title={t(section.titleKey)}
+// Fix: Cast section.titleKey to string to match the type expected by the `t` function.
+            title={t(section.titleKey as string)}
             prefix={section.prefix}
             itemCount={section.itemCount}
             checklistData={checklist}

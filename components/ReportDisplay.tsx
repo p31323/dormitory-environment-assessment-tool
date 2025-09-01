@@ -24,7 +24,7 @@ const ReportDisplay: React.FC<ReportDisplayProps> = ({
     // Check if the Web Share API is available and can share files.
     // The file is a dummy one just for the capability check.
     const dummyFile = new File([''], 'test.docx', { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
-    if (navigator.share && typeof navigator.canShare === 'function' && navigator.canShare({ files: [dummyFile] })) {
+    if (navigator.share && typeof navigator.canShare === 'function' && (navigator as any).canShare({ files: [dummyFile] })) {
       setCanShare(true);
     }
   }, []);
