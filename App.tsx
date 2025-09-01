@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useCallback, useMemo } from 'react';
 import { 
   ReportInfo, 
@@ -52,11 +53,11 @@ export default function App() {
   const reportContentRef = useRef<HTMLDivElement>(null);
   
   const t = useCallback((key: string): string => {
-      return translations[language][key] as string || key;
+      return translations[language].messages[key] || key;
   }, [language]);
 
   const checklistDescriptions = useMemo(() => {
-    return translations[language].checklistDescriptions as Record<ChecklistId, string>;
+    return translations[language].checklistDescriptions;
   }, [language]);
 
   const handleReportInfoChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -245,8 +246,7 @@ export default function App() {
         {CHECKLIST_SECTIONS.map(section => (
           <ChecklistSection
             key={section.id}
-// Fix: Cast section.titleKey to string to match the type expected by the `t` function.
-            title={t(section.titleKey as string)}
+            title={t(section.titleKey)}
             prefix={section.prefix}
             itemCount={section.itemCount}
             checklistData={checklist}

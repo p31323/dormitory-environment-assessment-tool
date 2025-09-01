@@ -40,7 +40,7 @@ export type CategorizedFindings = {
 
 export interface ChecklistSectionConfig {
     id: string;
-    titleKey: keyof TranslationMessages;
+    titleKey: string;
     prefix: 'A' | 'B' | 'C' | 'D' | 'E';
     itemCount: number;
 }
@@ -55,7 +55,14 @@ export type ReportContent = ReportElement[];
 
 // Type for translation messages
 export type TranslationMessages = {
-  [key: string]: string | Record<ChecklistId, string>;
+  [key: string]: string;
 };
 
-export type Translations = Record<Language, TranslationMessages>;
+export type ChecklistDescriptions = Record<ChecklistId, string>;
+
+export type LanguageTranslations = {
+  messages: TranslationMessages;
+  checklistDescriptions: ChecklistDescriptions;
+}
+
+export type Translations = Record<Language, LanguageTranslations>;
