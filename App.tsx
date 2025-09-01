@@ -183,7 +183,7 @@ export default function App() {
         type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
     });
 
-    if (navigator.share) {
+    if ('share' in navigator) {
         try {
             await navigator.share({
                 files: [file],

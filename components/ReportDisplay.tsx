@@ -86,4 +86,13 @@ const ReportDisplay: React.FC<ReportDisplayProps> = ({
         )}
         <button
           onClick={onHideReport}
-          className="flex-grow md:flex-grow-0 bg-gray-400 hover:bg-gray-500 text-white font-bold py-2 px-5 rounded-lg
+          className="flex-grow md:flex-grow-0 bg-gray-400 hover:bg-gray-500 text-white font-bold py-2 px-5 rounded-lg shadow-md transform transition duration-300 ease-in-out hover:scale-105 focus:outline-none focus:ring-4 focus:ring-gray-300"
+        >
+          {t('hideReportButton')}
+        </button>
+      </div>
+    </div>
+  );
+};
+
+export default ReportDisplay;
