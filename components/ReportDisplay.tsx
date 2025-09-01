@@ -21,10 +21,8 @@ const ReportDisplay: React.FC<ReportDisplayProps> = ({
   const [canShare, setCanShare] = useState(false);
 
   useEffect(() => {
-    // Check if the Web Share API is available and can share files.
-    // The file is a dummy one just for the capability check.
-    const dummyFile = new File([''], 'test.docx', { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
-    if (navigator.share && typeof navigator.canShare === 'function' && (navigator as any).canShare({ files: [dummyFile] })) {
+    // Check if the Web Share API is available using a build-safe method.
+    if ('share' in navigator) {
       setCanShare(true);
     }
   }, []);
@@ -88,13 +86,4 @@ const ReportDisplay: React.FC<ReportDisplayProps> = ({
         )}
         <button
           onClick={onHideReport}
-          className="flex-grow md:flex-grow-0 bg-gray-400 hover:bg-gray-500 text-white font-bold py-2 px-5 rounded-lg shadow-md transform transition duration-300 ease-in-out hover:scale-105 focus:outline-none focus:ring-4 focus:ring-gray-300"
-        >
-          {t('hideReportButton')}
-        </button>
-      </div>
-    </div>
-  );
-};
-
-export default ReportDisplay;
+          className="flex-grow md:flex-grow-0 bg-gray-400 hover:bg-gray-500 text-white font-bold py-2 px-5 rounded-lg
