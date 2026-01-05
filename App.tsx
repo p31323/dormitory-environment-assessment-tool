@@ -1,292 +1,288 @@
-import React, { useState, useRef, useCallback, useMemo } from 'react';
-import { 
-  ReportInfo, 
-  ChecklistState, 
-  ChecklistItem, 
-  ChecklistId, 
-  ComplianceStatus,
-  ReportContent,
-  Language
-} from './types';
-import { CHECKLIST_SECTIONS } from './constants';
-import { translations } from './translations';
-import { buildReportContent, renderReportToHtmlString } from './utils/reportUtils';
+
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { Language, translations, Translation } from './constants/translations';
+import { checklistData, ChecklistCategory } from './constants/checklistData';
+import { ReportInfo, ChecklistAnswers, ValidationErrors, GeneratedReport, LanguageCode } from './types';
+import LanguageSelector from './components/LanguageSelector';
 import ReportInfoForm from './components/ReportInfoForm';
-import ChecklistSection from './components/ChecklistSection';
-import ReportDisplay from './components/ReportDisplay';
-import Modal from './components/Modal';
+import Checklist from './components/Checklist';
+import ImageUpload from './components/ImageUpload';
+import ReportPreview from './components/ReportPreview';
+import GoogleDriveUpload from './components/GoogleDriveUpload';
+import ValidationErrorModal from './components/ValidationErrorModal';
+import { FaFileSignature, FaDownload } from 'react-icons/fa';
+import { LanguageContext } from './contexts/LanguageContext';
 
-const initialChecklistState = (): ChecklistState => {
-  const state: Partial<ChecklistState> = {};
-  CHECKLIST_SECTIONS.forEach(section => {
-      for (let i = 1; i <= section.itemCount; i++) {
-          const id = `${section.prefix}${i}` as ChecklistId;
-          state[id] = { compliant: null, notes: '' };
-      }
-  });
-  return state as ChecklistState;
-};
+declare global {
+  interface Window {
+    jspdf: any;
+    html2canvas: any;
+  }
+}
 
-// Get today's date in YYYY-MM-DD format
-const getTodayDate = () => new Date().toISOString().split('T')[0];
+const STORAGE_KEY = 'dorm_assessment_data_v2';
 
-export default function App() {
-  const [language, setLanguage] = useState<Language>('zh-TW');
-  const [reportInfo, setReportInfo] = useState<ReportInfo>({
-    checkDate: getTodayDate(),
-    checker: '',
-    dormNameAddress: '',
-    dormManager: '',
-  });
-
-  const [checklist, setChecklist] = useState<ChecklistState>(initialChecklistState);
-  const [reportContent, setReportContent] = useState<ReportContent>([]);
-  const [showReport, setShowReport] = useState(false);
-  const [error, setError] = useState('');
-  const [invalidFields, setInvalidFields] = useState<Set<string>>(new Set());
-
-  // State for validation modal
-  const [validationErrors, setValidationErrors] = useState<string[]>([]);
-  const [isValidationModalOpen, setValidationModalOpen] = useState(false);
-
-  const reportContentRef = useRef<HTMLDivElement>(null);
+const App: React.FC = () => {
+  const [language, setLanguage] = useState<LanguageCode>('zh-TW');
   
-  const t = useCallback((key: string): string => {
-      return translations[language][key] as string || key;
-  }, [language]);
+  const getInitialReportInfo = (): ReportInfo => ({
+    checkDate: new Date().toISOString().split('T')[0],
+    inspector: '',
+    dormitoryName: '',
+    dormitoryManagement: '',
+  });
 
-  const checklistDescriptions = useMemo(() => {
-    return translations[language].checklistDescriptions as Record<ChecklistId, string>;
-  }, [language]);
-
-  const handleReportInfoChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setReportInfo((prev) => ({ ...prev, [name]: value }));
-    if (invalidFields.has(name)) {
-      setInvalidFields(prev => {
-        const next = new Set(prev);
-        next.delete(name);
-        return next;
+  const getInitialChecklistAnswers = (): ChecklistAnswers => {
+    const answers: ChecklistAnswers = {};
+    checklistData.forEach(category => {
+      category.items.forEach(item => {
+        answers[item.id] = {
+          status: null,
+          remarks: '',
+          correctiveAction: '',
+          responsiblePerson: '',
+          targetDate: '',
+          actionStatus: 'pending',
+        };
       });
-    }
-  }, [invalidFields]);
-
-  const handleChecklistChange = useCallback((id: ChecklistId, field: keyof ChecklistItem, value: ComplianceStatus | string) => {
-    setChecklist((prev) => ({
-      ...prev,
-      [id]: { ...prev[id], [field]: value },
-    }));
-    
-    // Clear validation errors for the interacted fields
-    const newInvalidFields = new Set(invalidFields);
-    let changed = false;
-    if (field === 'compliant' && newInvalidFields.has(id)) {
-      newInvalidFields.delete(id);
-      changed = true;
-    } else if (field === 'correctiveAction' && newInvalidFields.has(`${id}-correctiveAction`)) {
-      newInvalidFields.delete(`${id}-correctiveAction`);
-      changed = true;
-    } else if (field === 'responsiblePerson' && newInvalidFields.has(`${id}-responsiblePerson`)) {
-      newInvalidFields.delete(`${id}-responsiblePerson`);
-      changed = true;
-    }
-    if (changed) {
-      setInvalidFields(newInvalidFields);
-    }
-
-  }, [invalidFields]);
-
-  const validateForm = () => {
-    const missingFields = new Set<string>();
-    const missingFieldLabels : string[] = [];
-
-    // Validate report info
-    (Object.keys(reportInfo) as Array<keyof ReportInfo>).forEach(key => {
-      if (!reportInfo[key]) {
-        missingFields.add(key);
-        missingFieldLabels.push(t(key));
-      }
     });
-
-    // Validate checklist
-    (Object.keys(checklist) as ChecklistId[]).forEach(id => {
-      const item = checklist[id];
-      if (item.compliant === null) {
-        missingFields.add(id);
-        missingFieldLabels.push(`${id} (${t('complianceStatus')})`);
-      } else if (item.compliant === 'N') {
-        if (!item.correctiveAction) {
-          missingFields.add(`${id}-correctiveAction`);
-          missingFieldLabels.push(`${id} (${t('correctiveActionPlaceholder')})`);
-        }
-        if (!item.responsiblePerson) {
-          missingFields.add(`${id}-responsiblePerson`);
-          missingFieldLabels.push(`${id} (${t('responsiblePersonPlaceholder')})`);
-        }
-      }
-    });
-
-    setInvalidFields(missingFields);
-    return missingFieldLabels;
+    return answers;
   };
 
-  const generateReport = useCallback(() => {
-    const missingFieldLabels = validateForm();
-    if (missingFieldLabels.length > 0) {
-      setError(t('validationError'));
-      setValidationErrors(missingFieldLabels);
-      setValidationModalOpen(true);
-      setShowReport(false);
-      return;
-    }
-
-    setError('');
-    
-    const newReportContent = buildReportContent(reportInfo, checklist, language);
-    setReportContent(newReportContent);
-    setShowReport(true);
-    setTimeout(() => {
-        reportContentRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, 100);
-
-  }, [reportInfo, checklist, language, t]);
-
-  const generateDocxBlob = useCallback(() => {
-    const selectedLangHtml = renderReportToHtmlString(reportContent);
-    let finalHtml = selectedLangHtml;
-    
-    // If current language is not Chinese, generate and append the Chinese report
-    if (language !== 'zh-TW') {
-        const chineseReportContent = buildReportContent(reportInfo, checklist, 'zh-TW');
-        const chineseHtml = renderReportToHtmlString(chineseReportContent);
-        finalHtml += `<p style="page-break-before: always;"></p>${chineseHtml}`;
-    }
-
-    const content = `<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body>${finalHtml}</body></html>`;
-    return (window as any).htmlDocx.asBlob(content);
-  }, [reportInfo, checklist, language, reportContent]);
-
-
-  const downloadWordReport = useCallback(() => {
-    if (typeof (window as any).saveAs === 'undefined') {
-      alert('Word generation library not loaded.');
-      return;
-    }
-    const blob = generateDocxBlob();
-    (window as any).saveAs(blob, `${reportInfo.checkDate.replace(/-/g, '')}-${t('wordFilename')}.docx`);
-  }, [reportInfo.checkDate, t, generateDocxBlob]);
+  const [reportInfo, setReportInfo] = useState<ReportInfo>(getInitialReportInfo);
+  const [checklistAnswers, setChecklistAnswers] = useState<ChecklistAnswers>(getInitialChecklistAnswers);
+  const [photos, setPhotos] = useState<string[]>([]);
+  const [validationErrors, setValidationErrors] = useState<ValidationErrors>({});
+  const [showErrorModal, setShowErrorModal] = useState<boolean>(false);
+  const [errorMessages, setErrorMessages] = useState<string[]>([]);
+  const [generatedReport, setGeneratedReport] = useState<GeneratedReport | null>(null);
+  const [isDownloading, setIsDownloading] = useState<boolean>(false);
   
-  const handleShare = useCallback(async () => {
-    const blob = generateDocxBlob();
-    const fileName = `${reportInfo.checkDate.replace(/-/g, '')}-${t('wordFilename')}.docx`;
-    const file = new File([blob], fileName, {
-        type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  const reportPreviewRef = useRef<HTMLDivElement>(null);
+
+  // Load from localStorage on mount
+  useEffect(() => {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (parsed.reportInfo) setReportInfo(parsed.reportInfo);
+        if (parsed.checklistAnswers) setChecklistAnswers(parsed.checklistAnswers);
+        if (parsed.photos) setPhotos(parsed.photos);
+        if (parsed.language) setLanguage(parsed.language);
+      } catch (e) {
+        console.error("Failed to load saved data", e);
+      }
+    }
+  }, []);
+
+  // Auto-save to localStorage
+  useEffect(() => {
+    const dataToSave = {
+      reportInfo,
+      checklistAnswers,
+      photos,
+      language,
+      lastUpdated: new Date().toISOString()
+    };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToSave));
+  }, [reportInfo, checklistAnswers, photos, language]);
+  
+  const t = useCallback((key: keyof Translation, replacements?: Record<string, string | number>): string => {
+    const applyReplacements = (text: string): string => {
+        if (!replacements) return text;
+        let result = text;
+        for (const placeholder in replacements) {
+            const regex = new RegExp(`\\{${placeholder}\\}`, 'g');
+            result = result.replace(regex, String(replacements[placeholder]));
+        }
+        return result;
+    };
+
+    const selectedLangText = applyReplacements(translations[language][key] || String(key));
+    if (language === 'zh-TW') return selectedLangText;
+
+    const chineseText = applyReplacements(translations['zh-TW'][key] || String(key));
+    if (selectedLangText === chineseText) return selectedLangText;
+
+    return `${selectedLangText} (${chineseText})`;
+  }, [language]);
+
+  const handleValidation = (): string[] => {
+    const errors: string[] = [];
+    const newValidationErrors: ValidationErrors = {};
+
+    Object.keys(reportInfo).forEach(key => {
+        const fieldKey = key as keyof ReportInfo;
+        if (fieldKey !== 'reportNo' && !reportInfo[fieldKey]) {
+            errors.push(t(fieldKey as keyof Translation));
+            newValidationErrors[fieldKey] = true;
+        }
     });
 
-    if ('share' in navigator) {
-        try {
-            await navigator.share({
-                files: [file],
-                title: t('shareTitle'),
-                text: t('shareText'),
-            });
-        } catch (error) {
-            const err = error as Error;
-            // User cancelled the share dialog. This is a normal flow, not an error.
-            if (err.name === 'AbortError') {
-                console.log('Share action cancelled by user.');
-            // The environment may block sharing, resulting in a permission error.
-            } else if (err.name === 'NotAllowedError' || err.message.toLowerCase().includes('permission denied')) {
-                console.error('Share permission denied:', err);
-                alert(t('sharePermissionDenied'));
-            } else {
-                // Handle other unexpected errors.
-                console.error('An unexpected error occurred during sharing:', err);
-                alert(`${t('shareGenericError')}: ${err.message}`);
+    Object.keys(checklistAnswers).forEach(itemId => {
+        const item = checklistAnswers[itemId];
+        if (item.status === null) {
+            errors.push(`${t('checklistTitle')} (${itemId}): ${t('status')}`);
+            newValidationErrors[itemId] = true;
+        } else if (item.status === 'N') {
+            if (!item.correctiveAction) {
+                errors.push(`${t('checklistTitle')} (${itemId}): ${t('correctiveAction')}`);
+                newValidationErrors[`${itemId}-correctiveAction`] = true;
+            }
+            if (!item.responsiblePerson) {
+                errors.push(`${t('checklistTitle')} (${itemId}): ${t('responsiblePerson')}`);
+                newValidationErrors[`${itemId}-responsiblePerson`] = true;
+            }
+            if (!item.targetDate) {
+                errors.push(`${t('checklistTitle')} (${itemId}): ${t('targetDate')}`);
+                newValidationErrors[`${itemId}-targetDate`] = true;
             }
         }
-    } else {
-        alert(t('shareNotSupported'));
-    }
-  }, [generateDocxBlob, reportInfo.checkDate, t]);
+    });
 
+    setValidationErrors(newValidationErrors);
+    return errors;
+  }
+
+  const handleGenerateReport = () => {
+    const messages = handleValidation();
+    if (messages.length > 0) {
+        setErrorMessages(messages);
+        setShowErrorModal(true);
+        setGeneratedReport(null);
+    } else {
+        setErrorMessages([]);
+        setShowErrorModal(false);
+        const reportNumber = `${reportInfo.checkDate.replace(/-/g, '')}-DORM-001`;
+        const report: GeneratedReport = {
+            reportInfo: { ...reportInfo, reportNo: reportNumber },
+            checklistAnswers: { ...checklistAnswers },
+            photos: [...photos],
+        };
+        setGeneratedReport(report);
+    }
+  };
+
+  const addCanvasToPdf = (pdf: any, canvas: HTMLCanvasElement, startsOnNewPage: boolean) => {
+    const margin = 10; 
+    const pdfWidth = pdf.internal.pageSize.getWidth();
+    const pdfHeight = pdf.internal.pageSize.getHeight();
+    const usableWidth = pdfWidth - (2 * margin);
+    const usableHeight = pdfHeight - (2 * margin);
+    const imgWidth = usableWidth;
+    const imgHeight = imgWidth * (canvas.height / canvas.width);
+    const imgData = canvas.toDataURL('image/png');
+
+    let heightLeft = imgHeight;
+    let sourceY = 0;
+    let isFirstIteration = true;
+
+    while (heightLeft > 0) {
+      if (!isFirstIteration || startsOnNewPage) pdf.addPage();
+      pdf.addImage(imgData, 'PNG', margin, margin - sourceY, imgWidth, imgHeight);
+      pdf.setFillColor(255, 255, 255);
+      pdf.rect(0, 0, pdfWidth, margin, 'F'); 
+      pdf.rect(0, pdfHeight - margin, pdfWidth, margin, 'F'); 
+      pdf.rect(0, 0, margin, pdfHeight, 'F'); 
+      pdf.rect(pdfWidth - margin, 0, margin, pdfHeight, 'F'); 
+      sourceY += usableHeight;
+      heightLeft -= usableHeight;
+      isFirstIteration = false;
+    }
+  };
+
+  const generatePdfBlob = async (): Promise<Blob | null> => {
+    if (!reportPreviewRef.current || typeof window.html2canvas === 'undefined' || typeof window.jspdf === 'undefined') return null;
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
+    const mainContentEl = document.getElementById('report-main-content');
+    const attachmentsEl = document.getElementById('report-attachments-section');
+
+    if (generatedReport && generatedReport.photos.length > 0 && mainContentEl && attachmentsEl) {
+        const mainCanvas = await window.html2canvas(mainContentEl, { scale: 2, useCORS: true });
+        addCanvasToPdf(pdf, mainCanvas, false);
+        const attachmentCanvas = await window.html2canvas(attachmentsEl, { scale: 2, useCORS: true });
+        addCanvasToPdf(pdf, attachmentCanvas, true);
+    } else {
+        const canvas = await window.html2canvas(reportPreviewRef.current, { scale: 2, useCORS: true });
+        addCanvasToPdf(pdf, canvas, false);
+    }
+    return pdf.output('blob');
+  };
+
+  const handleDownloadReport = async () => {
+    setIsDownloading(true);
+    try {
+        const blob = await generatePdfBlob();
+        if (blob) {
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `dormitory-assessment-report-${reportInfo.checkDate || 'report'}.pdf`;
+            link.click();
+            URL.revokeObjectURL(url);
+        }
+    } catch (error) {
+        console.error("Download Error:", error);
+    } finally {
+        setIsDownloading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (generatedReport) reportPreviewRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [generatedReport]);
+
+  const pdfFileName = `dormitory-report-${reportInfo.dormitoryName || 'dorm'}-${reportInfo.checkDate}.pdf`;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-100 to-indigo-200 p-4">
-      <h1 className="text-4xl font-bold text-center text-indigo-800 mb-8 mt-4">{t('appTitle')}</h1>
+    <LanguageContext.Provider value={{ language, setLanguage, t }}>
+      <div className="container mx-auto p-4 sm:p-6 md:p-8 font-sans">
+        <header className="bg-white shadow-md rounded-xl p-6 mb-8">
+          <div className="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
+            <div className="flex items-center space-x-4">
+               <FaFileSignature className="text-4xl text-blue-600" />
+               <div className="text-center md:text-left">
+                  <h1 className="text-2xl md:text-3xl font-bold text-gray-800">{t('title')}</h1>
+                  <p className="text-gray-500">{t('subtitle')}</p>
+                </div>
+            </div>
+            <LanguageSelector />
+          </div>
+        </header>
 
-      <div className="max-w-4xl mx-auto mb-6 p-4 bg-white/70 rounded-lg shadow-md backdrop-blur-sm">
-        <label htmlFor="language-select" className="block text-sm font-medium text-gray-800 mb-2">{t('selectLanguage')}:</label>
-        <select
-          id="language-select"
-          value={language}
-          onChange={(e) => setLanguage(e.target.value as Language)}
-          className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md shadow-sm"
-        >
-          <option value="zh-TW">繁體中文</option>
-          <option value="en">English</option>
-          <option value="vi">Tiếng Việt (越南文)</option>
-          <option value="id">Bahasa Indonesia (印尼文)</option>
-          <option value="th">ภาษาไทย (泰文)</option>
-          <option value="ms">Bahasa Melayu (馬來文)</option>
-        </select>
+        <main className="space-y-8">
+          <ReportInfoForm reportInfo={reportInfo} setReportInfo={setReportInfo} validationErrors={validationErrors} />
+          <Checklist checklistAnswers={checklistAnswers} setChecklistAnswers={setChecklistAnswers} validationErrors={validationErrors} />
+          <ImageUpload photos={photos} setPhotos={setPhotos} />
+          <div className="flex justify-center">
+            <button onClick={handleGenerateReport} className="bg-blue-600 text-white font-bold py-3 px-8 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 transition-transform transform hover:scale-105 w-full sm:w-auto">
+              {t('generateReportButton')}
+            </button>
+          </div>
+        </main>
+
+        {generatedReport && (
+          <div className="mt-12">
+            <div className="flex flex-col sm:flex-row justify-end mb-4 space-y-2 sm:space-y-0 sm:space-x-4">
+                <GoogleDriveUpload getPdfBlob={generatePdfBlob} fileName={pdfFileName} />
+                <button onClick={handleDownloadReport} disabled={isDownloading} className="bg-green-500 text-white font-bold py-2 px-6 rounded-lg hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-400 focus:ring-opacity-50 transition-transform transform hover:scale-105 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center space-x-2 shadow-md">
+                  {isDownloading ? (
+                    <><svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg><span>{t('downloading')}</span></>
+                  ) : (
+                    <><FaDownload /><span>{t('downloadReportButton')}</span></>
+                  )}
+                </button>
+            </div>
+            <div ref={reportPreviewRef}><ReportPreview report={generatedReport} /></div>
+          </div>
+        )}
+
+        {showErrorModal && <ValidationErrorModal onClose={() => setShowErrorModal(false)} errorFields={errorMessages} />}
       </div>
-
-      <ReportInfoForm 
-        reportInfo={reportInfo} 
-        onReportInfoChange={handleReportInfoChange} 
-        error={error} 
-        t={t}
-        invalidFields={invalidFields}
-      />
-
-      <div className="max-w-4xl mx-auto bg-gray-50 p-6 rounded-lg shadow-xl">
-        <h2 className="text-2xl font-semibold mb-6 text-gray-800">{t('checklistTitle')}</h2>
-        {CHECKLIST_SECTIONS.map(section => (
-          <ChecklistSection
-            key={section.id}
-// Fix: Cast section.titleKey to string to match the type expected by the `t` function.
-            title={t(section.titleKey as string)}
-            prefix={section.prefix}
-            itemCount={section.itemCount}
-            checklistData={checklist}
-            onChecklistChange={handleChecklistChange}
-            checklistDescriptions={checklistDescriptions}
-            t={t}
-            invalidFields={invalidFields}
-          />
-        ))}
-        <button
-          onClick={generateReport}
-          className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-lg shadow-lg transform transition duration-300 ease-in-out hover:scale-105 focus:outline-none focus:ring-4 focus:ring-indigo-300 mt-8"
-        >
-          {t('generateReportButton')}
-        </button>
-      </div>
-
-      {showReport && (
-        <ReportDisplay
-          reportContent={reportContent}
-          reportContentRef={reportContentRef}
-          onDownloadWord={downloadWordReport}
-          onShare={handleShare}
-          onHideReport={() => setShowReport(false)}
-          t={t}
-        />
-      )}
-      
-      <Modal
-        isOpen={isValidationModalOpen}
-        onClose={() => setValidationModalOpen(false)}
-        title={t('validationAlertTitle')}
-      >
-        <p className="text-sm text-gray-500 mb-4">{t('validationModalIntro')}</p>
-        <ul className="list-disc list-inside space-y-1 text-left max-h-60 overflow-y-auto bg-gray-50 p-3 rounded-md">
-          {validationErrors.map((error, index) => (
-            <li key={index} className="text-sm text-gray-800">{error}</li>
-          ))}
-        </ul>
-      </Modal>
-    </div>
+    </LanguageContext.Provider>
   );
-}
+};
+
+export default App;
