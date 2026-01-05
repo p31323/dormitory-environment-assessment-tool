@@ -1,7 +1,7 @@
 
-import React, { useState, useContext, useEffect } from 'react';
+import React, { useState, useContext } from 'react';
 import { LanguageContext } from '../contexts/LanguageContext';
-import { FaGoogleDrive, FaCheckCircle, FaExclamationCircle, FaInfoCircle, FaExternalLinkAlt, FaQuestionCircle, FaCopy, FaLink } from 'react-icons/fa';
+import { FaGoogleDrive, FaCheckCircle, FaExclamationCircle, FaInfoCircle, FaExternalLinkAlt, FaQuestionCircle, FaShieldAlt, FaUserCheck } from 'react-icons/fa';
 
 interface GoogleDriveUploadProps {
     getPdfBlob: () => Promise<Blob | null>;
@@ -14,30 +14,18 @@ const CLIENT_ID = '107079139052-ebc9550lab5vlh4hg337m7h54lpqgpek.apps.googleuser
 const GoogleDriveUpload: React.FC<GoogleDriveUploadProps> = ({ getPdfBlob, fileName }) => {
     const { t } = useContext(LanguageContext);
     const [status, setStatus] = useState<'idle' | 'uploading' | 'success' | 'error'>('idle');
-    const [errorMessage, setErrorMessage] = useState<string>('');
     const [fileUrl, setFileUrl] = useState<string | null>(null);
     const [showGuide, setShowGuide] = useState(false);
-    const [currentOrigin, setCurrentOrigin] = useState('');
-
-    useEffect(() => {
-        setCurrentOrigin(window.location.origin);
-    }, []);
-
-    const copyToClipboard = (text: string) => {
-        navigator.clipboard.writeText(text);
-        alert('網址已複製！請貼到 Google Console 的「已授權的 JavaScript 來源」');
-    };
 
     const handleUpload = async () => {
         if (status === 'uploading') return;
         setStatus('uploading');
-        setErrorMessage('');
         setFileUrl(null);
 
         try {
             const tokenResponse = await new Promise<any>((resolve, reject) => {
                 if (!(window as any).google?.accounts?.oauth2) {
-                    return reject(new Error('Google SDK 未就緒，請重新整理網頁。'));
+                    return reject(new Error('SDK_NOT_LOADED'));
                 }
                 const client = (window as any).google.accounts.oauth2.initTokenClient({
                     client_id: CLIENT_ID,
@@ -52,7 +40,7 @@ const GoogleDriveUpload: React.FC<GoogleDriveUploadProps> = ({ getPdfBlob, fileN
 
             const accessToken = tokenResponse.access_token;
             const blob = await getPdfBlob();
-            if (!blob) throw new Error('PDF 生成失敗');
+            if (!blob) throw new Error('PDF_GEN_FAILED');
 
             const metadata = {
                 name: fileName,
@@ -93,7 +81,7 @@ const GoogleDriveUpload: React.FC<GoogleDriveUploadProps> = ({ getPdfBlob, fileN
                             body: body,
                         });
 
-                        if (!response.ok) throw new Error('API 回傳錯誤');
+                        if (!response.ok) throw new Error('API_ERROR');
                         const data = await response.json();
                         resolve(data);
                     } catch (e) { reject(e); }
@@ -105,14 +93,10 @@ const GoogleDriveUpload: React.FC<GoogleDriveUploadProps> = ({ getPdfBlob, fileN
             setTimeout(() => { if(status === 'success') setStatus('idle'); }, 10000);
 
         } catch (error: any) {
-            console.error(error);
+            console.error('Upload Error:', error);
             setStatus('error');
-            if (error.error === 'invalid_request') {
-                setErrorMessage('授權封鎖 (400)：來源網址未許可。');
-                setShowGuide(true);
-            } else {
-                setErrorMessage('上傳失敗，請重試。');
-            }
+            // 如果出錯，自動打開導引提示使用者如何操作
+            setShowGuide(true);
         }
     };
 
@@ -127,7 +111,7 @@ const GoogleDriveUpload: React.FC<GoogleDriveUploadProps> = ({ getPdfBlob, fileN
                         className="flex items-center space-x-1 text-xs font-bold text-blue-600 bg-blue-50 px-3 py-2 rounded-lg border border-blue-200 hover:bg-blue-100 transition-colors animate-fade-in"
                     >
                         <FaExternalLinkAlt size={10} />
-                        <span>在雲端查看</span>
+                        <span>開啟檔案連結</span>
                     </a>
                 )}
 
@@ -146,12 +130,12 @@ const GoogleDriveUpload: React.FC<GoogleDriveUploadProps> = ({ getPdfBlob, fileN
                                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                             </svg>
-                            <span>驗證中...</span>
+                            <span>驗證身分中...</span>
                         </div>
                     ) : status === 'success' ? (
-                        <><FaCheckCircle /><span>備份完成</span></>
+                        <><FaCheckCircle /><span>備份成功</span></>
                     ) : status === 'error' ? (
-                        <><FaExclamationCircle /><span>修復錯誤</span></>
+                        <><FaExclamationCircle /><span>重新登入</span></>
                     ) : (
                         <><FaGoogleDrive /><span>{t('uploadToDrive')}</span></>
                     )}
@@ -160,63 +144,47 @@ const GoogleDriveUpload: React.FC<GoogleDriveUploadProps> = ({ getPdfBlob, fileN
                 <button 
                     onClick={() => setShowGuide(!showGuide)}
                     className={`p-2 transition-colors ${showGuide ? 'text-blue-500' : 'text-gray-400 hover:text-gray-600'}`}
+                    title="登入說明"
                 >
                     <FaQuestionCircle />
                 </button>
             </div>
 
-            {status === 'error' && !showGuide && (
-                <p className="text-[10px] text-red-500 font-medium">{errorMessage}</p>
-            )}
-
             {showGuide && (
-                <div className="bg-white border-2 border-blue-500 rounded-lg p-5 shadow-2xl max-w-sm text-left animate-fade-in z-50">
-                    <h4 className="text-sm font-bold text-gray-800 mb-3 flex items-center">
-                        <FaInfoCircle className="mr-1 text-blue-500" /> 解決 400 invalid_request
+                <div className="bg-white border-2 border-blue-600 rounded-xl p-6 shadow-2xl max-w-sm text-left animate-fade-in z-50">
+                    <h4 className="text-sm font-bold text-gray-800 mb-3 flex items-center border-b pb-2">
+                        <FaShieldAlt className="mr-2 text-blue-600" /> 
+                        如何順利登入備份？
                     </h4>
                     
-                    <div className="text-[11px] text-gray-600 space-y-3 leading-relaxed">
-                        <p>Google 拒絕了請求，因為它不知道這個網站是安全的。請執行以下操作：</p>
-                        
-                        <div className="bg-gray-50 p-2 rounded border border-gray-200">
-                            <p className="font-bold text-gray-800 mb-1 flex items-center">
-                                <FaLink className="mr-1" /> 1. 複製下方目前的網址：
+                    <div className="text-[11px] text-gray-600 space-y-4 leading-relaxed">
+                        <div className="bg-blue-50 p-3 rounded-lg border border-blue-100">
+                            <p className="font-bold text-blue-800 mb-1 flex items-center">
+                                <FaUserCheck className="mr-1" /> 已正式發佈：
                             </p>
-                            <div className="flex items-center space-x-2">
-                                <code className="bg-white p-1 border flex-grow overflow-hidden text-ellipsis whitespace-nowrap rounded text-[10px]">
-                                    {currentOrigin}
-                                </code>
-                                <button 
-                                    onClick={() => copyToClipboard(currentOrigin)}
-                                    className="p-1.5 bg-blue-600 text-white rounded hover:bg-blue-700 shadow-sm"
-                                    title="複製網址"
-                                >
-                                    <FaCopy size={12} />
-                                </button>
-                            </div>
+                            <p>本工具已完成 Google Cloud 設定，任何帳號皆可使用。但因未經過官方審核，首次登入需手動跳過警告。</p>
                         </div>
 
-                        <div className="space-y-1">
-                            <p className="font-bold text-gray-800">2. 前往 Google Cloud Console：</p>
-                            <ul className="list-disc list-inside ml-2">
-                                <li>點擊左側選單的 <span className="font-bold">「用戶端 (Clients)」</span> (或憑證)。</li>
-                                <li>點擊名稱為 <span className="text-blue-600 font-bold">AAA</span> 的項目。</li>
-                                <li>找到 <span className="font-bold">「已授權的 JavaScript 來源」</span>。</li>
-                                <li>點擊「新增 URI」並將剛才複製的網址貼上。</li>
-                                <li>按下儲存。</li>
-                            </ul>
+                        <div className="space-y-2">
+                            <p className="font-bold text-gray-800 underline">登入步驟圖解：</p>
+                            <ol className="list-decimal list-inside space-y-2 ml-1">
+                                <li>點擊「上傳至雲端」並選擇您的 Google 帳號。</li>
+                                <li>出現「Google 尚未驗證...」畫面時，點擊左下角 <span className="font-bold text-blue-600">「進階 (Advanced)」</span>。</li>
+                                <li>點擊最下方的 <span className="text-red-600 font-bold underline">「前往...(不安全)」</span>。</li>
+                                <li>點擊「繼續」授予權限。</li>
+                            </ol>
                         </div>
-                        
-                        <div className="p-2 bg-yellow-50 border border-yellow-200 rounded text-yellow-800 font-medium">
-                            ※ 儲存後需等待約 60 秒再重試上傳。
-                        </div>
+
+                        <p className="text-[10px] text-gray-400 italic">
+                            ※ 檔案將自動存入您的雲端硬碟指定資料夾中，既安全又方便。
+                        </p>
                     </div>
 
                     <button 
                         onClick={() => setShowGuide(false)}
-                        className="mt-4 w-full py-2 text-xs bg-gray-100 hover:bg-gray-200 rounded font-bold transition-colors"
+                        className="mt-4 w-full py-2 text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 rounded font-bold transition-all"
                     >
-                        關閉提示
+                        關閉指南
                     </button>
                 </div>
             )}
