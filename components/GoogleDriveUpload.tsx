@@ -1,26 +1,30 @@
 
 import React, { useState, useContext } from 'react';
 import { LanguageContext } from '../contexts/LanguageContext';
-import { FaFileExcel, FaCheckCircle, FaExclamationCircle, FaExternalLinkAlt, FaQuestionCircle, FaTools, FaShieldAlt, FaUserCheck } from 'react-icons/fa';
+import { FaFilePdf, FaFileExcel, FaCheckCircle, FaExclamationCircle, FaExternalLinkAlt, FaQuestionCircle, FaCloudUploadAlt, FaCaretDown } from 'react-icons/fa';
 
 interface GoogleDriveUploadProps {
-    getPdfBlob: () => Promise<Blob | null>; // 這裡名稱保留 getPdfBlob 但實際傳入 Excel Blob
-    fileName: string;
+    getPdfBlob: () => Promise<Blob | null>;
+    getExcelBlob: () => Promise<Blob | null>;
+    baseFileName: string;
 }
 
 const FOLDER_ID = '1pPM8zepZlfHYu5-IVcP7P_4vOsw5xZWi';
 const CLIENT_ID = '107079139052-ebc9550lab5vlh4hg337m7h54lpqgpek.apps.googleusercontent.com';
 
-const GoogleDriveUpload: React.FC<GoogleDriveUploadProps> = ({ getPdfBlob, fileName }) => {
+const GoogleDriveUpload: React.FC<GoogleDriveUploadProps> = ({ getPdfBlob, getExcelBlob, baseFileName }) => {
     const { t } = useContext(LanguageContext);
     const [status, setStatus] = useState<'idle' | 'uploading' | 'success' | 'error'>('idle');
     const [fileUrl, setFileUrl] = useState<string | null>(null);
     const [showGuide, setShowGuide] = useState(false);
+    const [uploadFormat, setUploadFormat] = useState<'pdf' | 'excel'>('pdf');
+    const [showDropdown, setShowDropdown] = useState(false);
 
     const handleUpload = async () => {
         if (status === 'uploading') return;
         setStatus('uploading');
         setFileUrl(null);
+        setShowDropdown(false);
 
         try {
             const tokenResponse = await new Promise<any>((resolve, reject) => {
@@ -39,13 +43,28 @@ const GoogleDriveUpload: React.FC<GoogleDriveUploadProps> = ({ getPdfBlob, fileN
             });
 
             const accessToken = tokenResponse.access_token;
-            const blob = await getPdfBlob();
-            if (!blob) throw new Error('EXCEL_GEN_FAILED');
+            
+            // Get correct blob and metadata based on selected format
+            let blob: Blob | null = null;
+            let mimeType = '';
+            let finalFileName = '';
+
+            if (uploadFormat === 'pdf') {
+                blob = await getPdfBlob();
+                mimeType = 'application/pdf';
+                finalFileName = `${baseFileName}.pdf`;
+            } else {
+                blob = await getExcelBlob();
+                mimeType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+                finalFileName = `${baseFileName}.xlsx`;
+            }
+
+            if (!blob) throw new Error('BLOB_GEN_FAILED');
 
             const metadata = {
-                name: fileName,
+                name: finalFileName,
                 parents: [FOLDER_ID],
-                mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                mimeType: mimeType,
             };
 
             const boundary = '-------314159265358979323846';
@@ -68,7 +87,7 @@ const GoogleDriveUpload: React.FC<GoogleDriveUploadProps> = ({ getPdfBlob, fileN
                         const body = delimiter +
                             'Content-Type: application/json\r\n\r\n' + JSON.stringify(metadata) +
                             delimiter +
-                            'Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet\r\n' +
+                            'Content-Type: ' + mimeType + '\r\n' +
                             'Content-Transfer-Encoding: base64\r\n\r\n' + base64Data +
                             close_delim;
 
@@ -95,7 +114,6 @@ const GoogleDriveUpload: React.FC<GoogleDriveUploadProps> = ({ getPdfBlob, fileN
         } catch (error: any) {
             console.error('Upload Error:', error);
             setStatus('error');
-            setShowGuide(true);
         }
     };
 
@@ -107,38 +125,75 @@ const GoogleDriveUpload: React.FC<GoogleDriveUploadProps> = ({ getPdfBlob, fileN
                         href={fileUrl} 
                         target="_blank" 
                         rel="noopener noreferrer"
-                        className="flex items-center space-x-1 text-xs font-bold text-green-700 bg-green-50 px-4 py-3 rounded-xl border border-green-200 hover:bg-green-100 transition-all shadow-sm animate-bounce"
+                        className="flex items-center space-x-1 text-xs font-bold text-blue-700 bg-blue-50 px-4 py-3 rounded-xl border border-blue-200 hover:bg-blue-100 transition-all shadow-sm animate-bounce"
                     >
                         <FaExternalLinkAlt size={10} />
-                        <span>在 Drive 開啟 Excel</span>
+                        <span>開啟備份檔案</span>
                     </a>
                 )}
 
-                <button
-                    onClick={handleUpload}
-                    disabled={status === 'uploading'}
-                    className={`flex items-center space-x-2 font-black py-3 px-8 rounded-xl transition-all transform hover:scale-105 shadow-md ${
-                        status === 'success' ? 'bg-green-500 text-white' : 
-                        status === 'error' ? 'bg-red-500 text-white' : 
-                        'bg-white text-green-700 border-2 border-green-500 hover:bg-green-50'
-                    }`}
-                >
-                    {status === 'uploading' ? (
-                        <div className="flex items-center space-x-2">
-                            <svg className="animate-spin h-4 w-4 text-current" viewBox="0 0 24 24">
-                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                            </svg>
-                            <span>雲端處理中...</span>
+                <div className="relative flex items-stretch">
+                    {/* Format Toggle Button */}
+                    <button
+                        onClick={() => setShowDropdown(!showDropdown)}
+                        className={`flex items-center space-x-1 px-3 rounded-l-xl border-2 border-r-0 transition-all ${
+                            uploadFormat === 'pdf' ? 'text-red-600 border-red-500 hover:bg-red-50' : 'text-green-600 border-green-500 hover:bg-green-50'
+                        }`}
+                        title="選擇檔案格式"
+                    >
+                        {uploadFormat === 'pdf' ? <FaFilePdf /> : <FaFileExcel />}
+                        <FaCaretDown size={10} />
+                    </button>
+
+                    {/* Upload Button */}
+                    <button
+                        onClick={handleUpload}
+                        disabled={status === 'uploading'}
+                        className={`flex items-center space-x-2 font-black py-3 px-6 rounded-r-xl transition-all shadow-md ${
+                            status === 'success' ? 'bg-green-500 text-white border-2 border-green-500' : 
+                            status === 'error' ? 'bg-red-500 text-white border-2 border-red-500' : 
+                            uploadFormat === 'pdf' 
+                                ? 'bg-white text-red-600 border-2 border-red-500 hover:bg-red-50' 
+                                : 'bg-white text-green-600 border-2 border-green-500 hover:bg-green-50'
+                        }`}
+                    >
+                        {status === 'uploading' ? (
+                            <div className="flex items-center space-x-2">
+                                <svg className="animate-spin h-4 w-4 text-current" viewBox="0 0 24 24">
+                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                                <span>上傳中...</span>
+                            </div>
+                        ) : status === 'success' ? (
+                            <><FaCheckCircle /><span>備份成功</span></>
+                        ) : status === 'error' ? (
+                            <><FaExclamationCircle /><span>上傳重試</span></>
+                        ) : (
+                            <><FaCloudUploadAlt /><span>上傳至雲端 ({uploadFormat.toUpperCase()})</span></>
+                        )}
+                    </button>
+
+                    {/* Dropdown Menu */}
+                    {showDropdown && (
+                        <div className="absolute top-full left-0 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-xl z-50 overflow-hidden">
+                            <button 
+                                onClick={() => { setUploadFormat('pdf'); setShowDropdown(false); }}
+                                className={`w-full flex items-center space-x-3 px-4 py-3 text-sm transition-colors ${uploadFormat === 'pdf' ? 'bg-red-50 text-red-700 font-bold' : 'hover:bg-gray-50 text-gray-700'}`}
+                            >
+                                <FaFilePdf className="text-red-500" />
+                                <span>PDF 格式</span>
+                            </button>
+                            <button 
+                                onClick={() => { setUploadFormat('excel'); setShowDropdown(false); }}
+                                className={`w-full flex items-center space-x-3 px-4 py-3 text-sm transition-colors ${uploadFormat === 'excel' ? 'bg-green-50 text-green-700 font-bold' : 'hover:bg-gray-50 text-gray-700'}`}
+                            >
+                                <FaFileExcel className="text-green-500" />
+                                <span>Excel 格式</span>
+                            </button>
                         </div>
-                    ) : status === 'success' ? (
-                        <><FaCheckCircle /><span>Excel 已上傳</span></>
-                    ) : status === 'error' ? (
-                        <><FaExclamationCircle /><span>上傳重試</span></>
-                    ) : (
-                        <><FaFileExcel /><span>備份 Excel 至雲端</span></>
                     )}
-                </button>
+                </div>
 
                 <button 
                     onClick={() => setShowGuide(!showGuide)}
@@ -151,15 +206,14 @@ const GoogleDriveUpload: React.FC<GoogleDriveUploadProps> = ({ getPdfBlob, fileN
             {showGuide && (
                 <div className="bg-white border-2 border-blue-600 rounded-2xl p-6 shadow-2xl max-w-md text-left animate-fade-in z-50">
                     <h4 className="text-sm font-black text-gray-800 mb-3 flex items-center border-b pb-2">
-                        <FaTools className="mr-2 text-blue-600" /> 
-                        為什麼改用 Excel？
+                        💡 備份說明
                     </h4>
                     <div className="text-[11px] text-gray-600 space-y-3">
-                        <p>1. <strong>解決切割問題：</strong> Excel 以儲存格為單位，不會有 PDF 在手機端產生的「文字橫向截斷」或「分頁位置尷尬」的問題。</p>
-                        <p>2. <strong>資料彙整：</strong> Excel 方便管理員進行篩選、排序，並能將多份報告彙整成年度統計表。</p>
-                        <p>3. <strong>自動分頁：</strong> 本次更新將「基本資訊」、「全清單」與「改善計畫」拆分為三個 Sheet 分頁，結構更清晰。</p>
+                        <p>1. 您可以切換左側圖示來選擇上傳 <strong>PDF</strong>（包含照片）或 <strong>Excel</strong>（純數據）。</p>
+                        <p>2. 點擊主按鈕後，檔案將自動儲存至公司指定的 Google Drive 備份資料夾中。</p>
+                        <p>3. 系統將在背景完成上傳，完成後可點擊連結確認雲端檔案。</p>
                     </div>
-                    <button onClick={() => setShowGuide(false)} className="mt-4 w-full py-2 bg-gray-100 text-gray-700 rounded-lg text-xs font-bold">關閉</button>
+                    <button onClick={() => setShowGuide(false)} className="mt-4 w-full py-2 bg-gray-100 text-gray-700 rounded-lg text-xs font-bold">關閉說明</button>
                 </div>
             )}
         </div>

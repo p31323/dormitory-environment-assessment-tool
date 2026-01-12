@@ -10,7 +10,7 @@ import ImageUpload from './components/ImageUpload';
 import ReportPreview from './components/ReportPreview';
 import GoogleDriveUpload from './components/GoogleDriveUpload';
 import ValidationErrorModal from './components/ValidationErrorModal';
-import { FaFileSignature, FaDownload, FaFileExcel } from 'react-icons/fa';
+import { FaFileSignature, FaFilePdf, FaFileExcel, FaDownload } from 'react-icons/fa';
 import { LanguageContext } from './contexts/LanguageContext';
 
 declare global {
@@ -55,7 +55,6 @@ const App: React.FC = () => {
   const [showErrorModal, setShowErrorModal] = useState<boolean>(false);
   const [errorMessages, setErrorMessages] = useState<string[]>([]);
   const [generatedReport, setGeneratedReport] = useState<GeneratedReport | null>(null);
-  const [isDownloading, setIsDownloading] = useState<boolean>(false);
   
   const reportPreviewRef = useRef<HTMLDivElement>(null);
 
@@ -66,7 +65,6 @@ const App: React.FC = () => {
         const parsed = JSON.parse(saved);
         if (parsed.reportInfo) setReportInfo(parsed.reportInfo);
         if (parsed.checklistAnswers) {
-          // Merge to ensure all keys exist even if storage is partial
           setChecklistAnswers(prev => ({ ...prev, ...parsed.checklistAnswers }));
         }
         if (parsed.photos) setPhotos(parsed.photos);
@@ -100,7 +98,6 @@ const App: React.FC = () => {
     const newValidationErrors: ValidationErrors = {};
     if (!reportInfo.inspector) { errors.push(t('inspector')); newValidationErrors['inspector'] = true; }
     if (!reportInfo.dormitoryName) { errors.push(t('dormitoryName')); newValidationErrors['dormitoryName'] = true; }
-    
     setValidationErrors(newValidationErrors);
     return errors;
   }
@@ -126,7 +123,6 @@ const App: React.FC = () => {
     const XLSX = window.XLSX;
     const wb = XLSX.utils.book_new();
 
-    // 1. Summary Sheet
     const summaryData = [
         [t('reportTemplateTitle')],
         [],
@@ -139,52 +135,76 @@ const App: React.FC = () => {
         [t('conclusionSectionTitle')],
         [Object.values(checklistAnswers).some(a => a.status === 'N') ? t('conclusionTextNonCompliant') : t('conclusionTextCompliant')]
     ];
-    const wsSummary = XLSX.utils.aoa_to_sheet(summaryData);
-    XLSX.utils.book_append_sheet(wb, wsSummary, "Summary");
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(summaryData), "Summary");
 
-    // 2. Full Checklist Sheet
-    const checklistRows = [
-        [t('item'), t('category'), t('status'), t('remarks')]
-    ];
+    const checklistRows = [[t('item'), t('category'), t('status'), t('remarks')]];
     checklistData.forEach(cat => {
         cat.items.forEach(item => {
             const ans = checklistAnswers[item.id];
-            const statusStr = ans ? (ans.status === 'Y' ? t('yes') : ans.status === 'N' ? t('no') : '-') : '-';
             checklistRows.push([
                 `${item.id}: ${t(item.id as any)}`,
                 t(cat.key as any),
-                statusStr,
+                ans ? (ans.status === 'Y' ? t('yes') : ans.status === 'N' ? t('no') : '-') : '-',
                 ans?.remarks || ''
             ]);
         });
     });
-    const wsFull = XLSX.utils.aoa_to_sheet(checklistRows);
-    XLSX.utils.book_append_sheet(wb, wsFull, "Full Checklist");
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(checklistRows), "Full Checklist");
 
-    // 3. Action Plan Sheet (Only non-compliant)
-    const actionPlanRows = [
-        [t('item'), t('correctiveAction'), t('responsiblePerson'), t('targetDate'), t('actionStatus')]
-    ];
+    const actionRows = [[t('item'), t('correctiveAction'), t('responsiblePerson'), t('targetDate'), t('actionStatus')]];
     let hasN = false;
     Object.keys(checklistAnswers).forEach(id => {
         const ans = checklistAnswers[id];
         if (ans && ans.status === 'N') {
             hasN = true;
-            actionPlanRows.push([
-                id,
-                ans.correctiveAction,
-                ans.responsiblePerson,
-                ans.targetDate,
-                t('statusPending')
-            ]);
+            actionRows.push([id, ans.correctiveAction, ans.responsiblePerson, ans.targetDate, t('statusPending')]);
         }
     });
-    if (!hasN) actionPlanRows.push([t('noFindingsItem'), 'N/A', 'N/A', 'N/A', 'N/A']);
-    const wsAction = XLSX.utils.aoa_to_sheet(actionPlanRows);
-    XLSX.utils.book_append_sheet(wb, wsAction, "Action Plan");
+    if (!hasN) actionRows.push([t('noFindingsItem'), 'N/A', 'N/A', 'N/A', 'N/A']);
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(actionRows), "Action Plan");
 
     const excelBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
     return new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  };
+
+  const generatePdfBlob = async (): Promise<Blob | null> => {
+    const reportElement = document.getElementById('full-report-container');
+    if (!reportElement || !window.html2canvas || !window.jspdf) return null;
+
+    try {
+        const canvas = await window.html2canvas(reportElement, {
+            scale: 2,
+            useCORS: true,
+            logging: false,
+            windowWidth: reportElement.scrollWidth,
+            windowHeight: reportElement.scrollHeight
+        });
+
+        const imgData = canvas.toDataURL('image/jpeg', 0.95);
+        const pdf = new window.jspdf.jsPDF('p', 'mm', 'a4');
+        const pdfWidth = pdf.internal.pageSize.getWidth();
+        const pdfHeight = pdf.internal.pageSize.getHeight();
+        const imgWidth = pdfWidth;
+        const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+        let heightLeft = imgHeight;
+        let position = 0;
+
+        pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight);
+        heightLeft -= pdfHeight;
+
+        while (heightLeft >= 0) {
+            position = heightLeft - imgHeight;
+            pdf.addPage();
+            pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight);
+            heightLeft -= pdfHeight;
+        }
+
+        return pdf.output('blob');
+    } catch (error) {
+        console.error('PDF generation error:', error);
+        return null;
+    }
   };
 
   const handleDownloadExcel = async () => {
@@ -199,7 +219,17 @@ const App: React.FC = () => {
     }
   };
 
-  const excelFileName = `dormitory-report-${reportInfo.dormitoryName || 'dorm'}-${reportInfo.checkDate}.xlsx`;
+  const handleDownloadPdf = async () => {
+    const blob = await generatePdfBlob();
+    if (blob) {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `Report-${reportInfo.dormitoryName}-${reportInfo.checkDate}.pdf`;
+        a.click();
+        URL.revokeObjectURL(url);
+    }
+  };
 
   return (
     <LanguageContext.Provider value={{ language, setLanguage, t }}>
@@ -231,13 +261,24 @@ const App: React.FC = () => {
         {generatedReport && (
           <div className="mt-12 animate-fade-in">
             <div className="flex flex-col sm:flex-row justify-end mb-6 space-y-2 sm:space-y-0 sm:space-x-4">
-                <GoogleDriveUpload getPdfBlob={generateExcelBlob} fileName={excelFileName} />
+                <GoogleDriveUpload 
+                  getPdfBlob={generatePdfBlob} 
+                  getExcelBlob={generateExcelBlob}
+                  baseFileName={`report-${reportInfo.dormitoryName}-${reportInfo.checkDate}`} 
+                />
+                <button 
+                  onClick={handleDownloadPdf} 
+                  className="bg-red-600 text-white font-bold py-3 px-6 rounded-xl hover:bg-red-700 shadow-md transition-all flex items-center justify-center space-x-2"
+                >
+                  <FaFilePdf className="text-lg" />
+                  <span>下載 PDF</span>
+                </button>
                 <button 
                   onClick={handleDownloadExcel} 
-                  className="bg-green-600 text-white font-bold py-3 px-8 rounded-xl hover:bg-green-700 shadow-md transition-all flex items-center justify-center space-x-2"
+                  className="bg-green-600 text-white font-bold py-3 px-6 rounded-xl hover:bg-green-700 shadow-md transition-all flex items-center justify-center space-x-2"
                 >
                   <FaFileExcel className="text-lg" />
-                  <span>下載 Excel 報告</span>
+                  <span>下載 Excel</span>
                 </button>
             </div>
             <div className="bg-white rounded-2xl shadow-2xl overflow-hidden ring-1 ring-gray-200">
