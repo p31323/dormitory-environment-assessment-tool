@@ -54,7 +54,6 @@ export const checklistData: ChecklistCategory[] = [
             { id: 'D6', categoryKey: 'hygieneAndFacilities' },
             { id: 'D7', categoryKey: 'hygieneAndFacilities' },
             { id: 'D8', categoryKey: 'hygieneAndFacilities' },
-            { id: 'D9', categoryKey: 'hygieneAndFacilities' },
         ]
     },
     {
@@ -63,7 +62,6 @@ export const checklistData: ChecklistCategory[] = [
             { id: 'E1', categoryKey: 'others' },
             { id: 'E2', categoryKey: 'others' },
             { id: 'E3', categoryKey: 'others' },
-            { id: 'E4', categoryKey: 'others' },
         ]
     }
 ];

@@ -1,5 +1,4 @@
 
-
 import React, { useContext } from 'react';
 import { LanguageContext } from '../contexts/LanguageContext';
 import { ChecklistItemData as ItemData } from '../constants/checklistData';
@@ -16,6 +15,10 @@ interface ChecklistItemProps {
 
 const ChecklistItem: React.FC<ChecklistItemProps> = ({ itemData, itemNumber, answer, onAnswerChange, validationErrors }) => {
     const { t } = useContext(LanguageContext);
+    
+    // Safety check: handle cases where answer might be undefined
+    if (!answer) return null;
+
     const isNonCompliant = answer.status === 'N';
     const isStatusInvalid = validationErrors[itemData.id];
 
@@ -64,7 +67,7 @@ const ChecklistItem: React.FC<ChecklistItemProps> = ({ itemData, itemNumber, ans
                 <div className="flex-shrink-0 w-full md:w-56">
                     <textarea
                         placeholder={t('remarks')}
-                        value={answer.remarks}
+                        value={answer.remarks || ''}
                         onChange={(e) => onAnswerChange(itemData.id, 'remarks', e.target.value)}
                         className="w-full text-sm px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                         rows={2}
@@ -78,7 +81,7 @@ const ChecklistItem: React.FC<ChecklistItemProps> = ({ itemData, itemNumber, ans
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">{t('correctiveAction')}</label>
                         <textarea
-                            value={answer.correctiveAction}
+                            value={answer.correctiveAction || ''}
                             onChange={(e) => onAnswerChange(itemData.id, 'correctiveAction', e.target.value)}
                             className={`w-full text-sm px-3 py-1.5 border rounded-md shadow-sm focus:outline-none focus:ring-2 ${
                                 validationErrors[`${itemData.id}-correctiveAction`]
@@ -92,7 +95,7 @@ const ChecklistItem: React.FC<ChecklistItemProps> = ({ itemData, itemNumber, ans
                         <label className="block text-sm font-medium text-gray-700 mb-1">{t('responsiblePerson')}</label>
                         <input
                             type="text"
-                            value={answer.responsiblePerson}
+                            value={answer.responsiblePerson || ''}
                             onChange={(e) => onAnswerChange(itemData.id, 'responsiblePerson', e.target.value)}
                             className={`w-full text-sm px-3 py-1.5 border rounded-md shadow-sm focus:outline-none focus:ring-2 ${
                                 validationErrors[`${itemData.id}-responsiblePerson`]
@@ -105,7 +108,7 @@ const ChecklistItem: React.FC<ChecklistItemProps> = ({ itemData, itemNumber, ans
                         <label className="block text-sm font-medium text-gray-700 mb-1">{t('targetDate')}</label>
                         <input
                             type="date"
-                            value={answer.targetDate}
+                            value={answer.targetDate || ''}
                             onChange={(e) => onAnswerChange(itemData.id, 'targetDate', e.target.value)}
                              className={`w-full text-sm px-3 py-1.5 border rounded-md shadow-sm focus:outline-none focus:ring-2 ${
                                 validationErrors[`${itemData.id}-targetDate`]
