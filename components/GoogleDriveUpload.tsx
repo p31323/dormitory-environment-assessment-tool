@@ -1,7 +1,7 @@
 
 import React, { useState, useContext } from 'react';
 import { LanguageContext } from '../contexts/LanguageContext';
-import { FaFilePdf, FaFileExcel, FaCheckCircle, FaExclamationCircle, FaExternalLinkAlt, FaQuestionCircle, FaCloudUploadAlt, FaCaretDown, FaCopy } from 'react-icons/fa';
+import { FaFilePdf, FaFileExcel, FaCheckCircle, FaExclamationCircle, FaExternalLinkAlt, FaQuestionCircle, FaCloudUploadAlt, FaCaretDown, FaCopy, FaLockOpen } from 'react-icons/fa';
 
 interface GoogleDriveUploadProps {
     getPdfBlob: () => Promise<Blob | null>;
@@ -10,7 +10,7 @@ interface GoogleDriveUploadProps {
 }
 
 /** 
- * 已更新為您提供的最新版用戶端 ID
+ * 用戶端 ID：已設定為您提供的最新版
  */
 const CLIENT_ID = '211134551544-ebes70u90l205o19p7eemcecr2mvk2u7.apps.googleusercontent.com';
 const FOLDER_ID = '11_Bdd1tKHTAR-CJ79o-0ShE5VLB3objg';
@@ -24,7 +24,6 @@ const GoogleDriveUpload: React.FC<GoogleDriveUploadProps> = ({ getPdfBlob, getEx
     const [showDropdown, setShowDropdown] = useState(false);
     const [copyFeedback, setCopyFeedback] = useState(false);
 
-    // 取得當前的完整原始來源 (Protocol + Domain)
     const currentOrigin = window.location.origin;
 
     const copyToClipboard = () => {
@@ -132,11 +131,11 @@ const GoogleDriveUpload: React.FC<GoogleDriveUploadProps> = ({ getPdfBlob, getEx
             setStatus('error');
             
             let errorMsg = "上傳失敗。";
-            if (err.error === 'invalid_request') {
-                errorMsg = `授權要求無效 (400)：\n\n原因：目前網址未在 Google Console 的「授權來源」清單中。\n\n請將以下網址完整複製並貼入 Google Console 的 JavaScript 來源：\n${currentOrigin}`;
+            if (err.error === 'access_denied') {
+                errorMsg = "權限被拒 (403)：\n\n原因：應用程式目前處於「測試模式」，只有名單內的 Email 可登入。\n\n解決方法：請在 Google Console 點擊「發布應用程式 (PUBLISH APP)」即可取消帳戶限制。";
+            } else if (err.error === 'invalid_request') {
+                errorMsg = `授權要求無效 (400)：\n請確認 Google Console 中的「已授權 JavaScript 來源」包含：\n${currentOrigin}`;
             }
-            else if (err.error === 'access_denied') errorMsg = "存取被拒：請確認您的 Email 已加入「測試使用者」名單。";
-            else if (err.error === 'idpiframe_initialization_failed') errorMsg = "初始化失敗：請確認「已授權的 JavaScript 來源」是否包含當前網域。";
             
             alert(`${errorMsg}\n\n(詳細代碼: ${err.error || 'unknown'})`);
         }
@@ -226,32 +225,35 @@ const GoogleDriveUpload: React.FC<GoogleDriveUploadProps> = ({ getPdfBlob, getEx
             </div>
 
             {showGuide && (
-                <div className="bg-white border-2 border-blue-600 rounded-2xl p-6 shadow-2xl max-w-md text-left animate-fade-in z-50">
+                <div className="bg-white border-2 border-blue-600 rounded-2xl p-6 shadow-2xl max-w-md text-left animate-fade-in z-50 overflow-y-auto max-h-[80vh]">
                     <h4 className="text-sm font-black text-gray-800 mb-3 flex items-center border-b pb-2">
-                        💡 雲端備份設定指南
+                        💡 如何取消帳戶限制 (不設限帳戶)
                     </h4>
-                    <div className="text-[11px] text-gray-600 space-y-3">
-                        <div className="bg-blue-50 p-3 rounded-lg border border-blue-100 mb-4">
-                            <p className="font-bold text-blue-700 mb-1">🔑 1. 修正「已授權的 JavaScript 來源」：</p>
-                            <p className="text-[10px] text-gray-500 mb-2">請確保 Google Console 中的 URI 是完整的「.app」結尾：</p>
+                    <div className="text-[11px] text-gray-600 space-y-4">
+                        <div className="bg-orange-50 p-3 rounded-lg border border-orange-200">
+                            <p className="font-bold text-orange-700 mb-1 flex items-center">
+                                <FaLockOpen className="mr-2"/> 解除 403 存取限制教學：
+                            </p>
+                            <ol className="list-decimal list-inside space-y-1 mt-1 text-orange-800 font-medium">
+                                <li>前往 Google Console 的「OAuth 同意畫面」。</li>
+                                <li>點擊「發布狀態」下的 **發布應用程式 (PUBLISH APP)**。</li>
+                                <li>發布後，狀態會從「測試中」變更為「正式版」。</li>
+                            </ol>
+                            <p className="mt-2 text-[10px] text-orange-600">※ 發布後，任何人都可登入。雖然登入時會跳出警告畫面，但點擊「進階」→「前往...(不安全)」即可使用。</p>
+                        </div>
+
+                        <div className="bg-blue-50 p-3 rounded-lg border border-blue-100">
+                            <p className="font-bold text-blue-700 mb-1">🌐 已授權 JavaScript 來源：</p>
+                            <p className="text-[10px] text-gray-500 mb-2">確保 Google Console 填寫的是此網址：</p>
                             <div className="flex items-center space-x-2 bg-white p-2 rounded border border-blue-200">
                                 <code className="flex-grow text-[10px] break-all font-mono text-gray-800">{currentOrigin}</code>
-                                <button 
-                                    onClick={copyToClipboard}
-                                    className={`flex-shrink-0 p-2 rounded transition-colors ${copyFeedback ? 'bg-green-500 text-white' : 'bg-blue-100 text-blue-600 hover:bg-blue-200'}`}
-                                >
+                                <button onClick={copyToClipboard} className={`p-2 rounded ${copyFeedback ? 'bg-green-500 text-white' : 'bg-blue-100 text-blue-600'}`}>
                                     {copyFeedback ? <FaCheckCircle /> : <FaCopy />}
                                 </button>
                             </div>
                         </div>
 
-                        <p className="font-bold text-blue-700 mb-1">🔑 2. 確認用戶端 ID：</p>
-                        <p className="text-[10px] text-gray-500">
-                            目前已使用您提供的 ID。
-                        </p>
-
-                        <p>3. <strong>啟用 API</strong>：在「程式庫」搜尋並啟用 <strong>Google Drive API</strong>。</p>
-                        <p>4. <strong>測試使用者</strong>：確認您的 Email 已在「OAuth 同意畫面」的測試名單中。</p>
+                        <p>✅ <strong>啟用 API</strong>：確保 Google Cloud 中已啟用「Google Drive API」。</p>
                     </div>
                     <button onClick={() => setShowGuide(false)} className="mt-4 w-full py-2 bg-gray-100 text-gray-700 rounded-lg text-xs font-bold">關閉說明</button>
                 </div>
