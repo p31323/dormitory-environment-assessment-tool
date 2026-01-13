@@ -1,8 +1,8 @@
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Language, translations, Translation } from './constants/translations';
-import { checklistData, ChecklistCategory } from './constants/checklistData';
-import { ReportInfo, ChecklistAnswers, ValidationErrors, GeneratedReport, LanguageCode } from './types';
+import React, { useState, useEffect, useCallback } from 'react';
+import { translations, Translation } from './constants/translations';
+import { checklistData } from './constants/checklistData';
+import { ReportInfo, ChecklistAnswers, ValidationErrors, GeneratedReport, LanguageCode, ChecklistItemAnswer } from './types';
 import LanguageSelector from './components/LanguageSelector';
 import ReportInfoForm from './components/ReportInfoForm';
 import Checklist from './components/Checklist';
@@ -10,7 +10,7 @@ import ImageUpload from './components/ImageUpload';
 import ReportPreview from './components/ReportPreview';
 import GoogleDriveUpload from './components/GoogleDriveUpload';
 import ValidationErrorModal from './components/ValidationErrorModal';
-import { FaFileSignature, FaFilePdf, FaFileExcel, FaDownload } from 'react-icons/fa';
+import { FaFileSignature, FaFilePdf, FaFileExcel } from 'react-icons/fa';
 import { LanguageContext } from './contexts/LanguageContext';
 
 declare global {
@@ -18,6 +18,7 @@ declare global {
     jspdf: any;
     html2canvas: any;
     XLSX: any;
+    google: any;
   }
 }
 
@@ -56,8 +57,6 @@ const App: React.FC = () => {
   const [errorMessages, setErrorMessages] = useState<string[]>([]);
   const [generatedReport, setGeneratedReport] = useState<GeneratedReport | null>(null);
   
-  const reportPreviewRef = useRef<HTMLDivElement>(null);
-
   useEffect(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
@@ -133,7 +132,7 @@ const App: React.FC = () => {
         [t('dormitoryManagement'), reportInfo.dormitoryManagement],
         [],
         [t('conclusionSectionTitle')],
-        [Object.values(checklistAnswers).some(a => a.status === 'N') ? t('conclusionTextNonCompliant') : t('conclusionTextCompliant')]
+        [(Object.values(checklistAnswers) as ChecklistItemAnswer[]).some(a => a.status === 'N') ? t('conclusionTextNonCompliant') : t('conclusionTextCompliant')]
     ];
     XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(summaryData), "Summary");
 
