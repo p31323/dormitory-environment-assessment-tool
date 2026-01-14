@@ -1,7 +1,7 @@
 
-import React, { useState, useContext } from 'react';
+import React, { useState, useContext, useEffect } from 'react';
 import { LanguageContext } from '../contexts/LanguageContext';
-import { FaFilePdf, FaFileExcel, FaCheckCircle, FaExclamationCircle, FaExternalLinkAlt, FaQuestionCircle, FaCloudUploadAlt, FaCaretDown, FaCopy, FaLockOpen } from 'react-icons/fa';
+import { FaFilePdf, FaFileExcel, FaCheckCircle, FaExclamationCircle, FaExternalLinkAlt, FaQuestionCircle, FaCloudUploadAlt, FaCaretDown, FaCopy, FaLockOpen, FaCommentDots } from 'react-icons/fa';
 
 interface GoogleDriveUploadProps {
     getPdfBlob: () => Promise<Blob | null>;
@@ -23,8 +23,17 @@ const GoogleDriveUpload: React.FC<GoogleDriveUploadProps> = ({ getPdfBlob, getEx
     const [uploadFormat, setUploadFormat] = useState<'pdf' | 'excel'>('pdf');
     const [showDropdown, setShowDropdown] = useState(false);
     const [copyFeedback, setCopyFeedback] = useState(false);
+    const [isLineBrowser, setIsLineBrowser] = useState(false);
 
     const currentOrigin = window.location.origin;
+
+    // 偵測是否在 LINE 內建瀏覽器中
+    useEffect(() => {
+        const ua = navigator.userAgent || navigator.vendor || (window as any).opera;
+        if (ua.indexOf('Line') > -1) {
+            setIsLineBrowser(true);
+        }
+    }, []);
 
     const copyToClipboard = () => {
         navigator.clipboard.writeText(currentOrigin);
@@ -34,6 +43,12 @@ const GoogleDriveUpload: React.FC<GoogleDriveUploadProps> = ({ getPdfBlob, getEx
 
     const handleUpload = async () => {
         if (status === 'uploading') return;
+
+        // 如果偵測到 LINE 瀏覽器，先阻擋並提示
+        if (isLineBrowser) {
+            alert("⚠️ 偵測到您正在使用 LINE 內建瀏覽器。\n\n由於 Google 安全限制，LINE 瀏覽器無法進行雲端授權。\n\n請點擊畫面右下角的「...」並選擇「在預設瀏覽器中開啟」後，再重新上傳。");
+            return;
+        }
         
         setStatus('uploading');
         setFileUrl(null);
@@ -144,6 +159,13 @@ const GoogleDriveUpload: React.FC<GoogleDriveUploadProps> = ({ getPdfBlob, getEx
     return (
         <div className="flex flex-col items-end space-y-2 relative">
             <div className="flex items-center space-x-2">
+                {isLineBrowser && (
+                    <div className="bg-orange-50 text-orange-700 text-[10px] px-2 py-1 rounded border border-orange-200 flex items-center animate-pulse">
+                        <FaCommentDots className="mr-1" />
+                        請點右下角開啟外部瀏覽器
+                    </div>
+                )}
+
                 {status === 'success' && fileUrl && (
                     <a 
                         href={fileUrl} 
@@ -227,9 +249,16 @@ const GoogleDriveUpload: React.FC<GoogleDriveUploadProps> = ({ getPdfBlob, getEx
             {showGuide && (
                 <div className="bg-white border-2 border-blue-600 rounded-2xl p-6 shadow-2xl max-w-md text-left animate-fade-in z-50 overflow-y-auto max-h-[80vh]">
                     <h4 className="text-sm font-black text-gray-800 mb-3 flex items-center border-b pb-2">
-                        💡 如何取消帳戶限制 (不設限帳戶)
+                        💡 如何解決 LINE 無法上傳問題
                     </h4>
                     <div className="text-[11px] text-gray-600 space-y-4">
+                        <div className="bg-red-50 p-3 rounded-lg border border-red-200">
+                            <p className="font-bold text-red-700 mb-1 flex items-center">
+                                <FaCommentDots className="mr-2"/> LINE 瀏覽器限制：
+                            </p>
+                            <p>Google 禁止在 LINE 的內建瀏覽器登入。請點擊 LINE 畫面右下角的「...」圖示，選擇 **「在預設瀏覽器中開啟」** 後再進行上傳。</p>
+                        </div>
+
                         <div className="bg-orange-50 p-3 rounded-lg border border-orange-200">
                             <p className="font-bold text-orange-700 mb-1 flex items-center">
                                 <FaLockOpen className="mr-2"/> 解除 403 存取限制教學：
@@ -237,14 +266,11 @@ const GoogleDriveUpload: React.FC<GoogleDriveUploadProps> = ({ getPdfBlob, getEx
                             <ol className="list-decimal list-inside space-y-1 mt-1 text-orange-800 font-medium">
                                 <li>前往 Google Console 的「OAuth 同意畫面」。</li>
                                 <li>點擊「發布狀態」下的 **發布應用程式 (PUBLISH APP)**。</li>
-                                <li>發布後，狀態會從「測試中」變更為「正式版」。</li>
                             </ol>
-                            <p className="mt-2 text-[10px] text-orange-600">※ 發布後，任何人都可登入。雖然登入時會跳出警告畫面，但點擊「進階」→「前往...(不安全)」即可使用。</p>
                         </div>
 
                         <div className="bg-blue-50 p-3 rounded-lg border border-blue-100">
                             <p className="font-bold text-blue-700 mb-1">🌐 已授權 JavaScript 來源：</p>
-                            <p className="text-[10px] text-gray-500 mb-2">確保 Google Console 填寫的是此網址：</p>
                             <div className="flex items-center space-x-2 bg-white p-2 rounded border border-blue-200">
                                 <code className="flex-grow text-[10px] break-all font-mono text-gray-800">{currentOrigin}</code>
                                 <button onClick={copyToClipboard} className={`p-2 rounded ${copyFeedback ? 'bg-green-500 text-white' : 'bg-blue-100 text-blue-600'}`}>
@@ -252,8 +278,6 @@ const GoogleDriveUpload: React.FC<GoogleDriveUploadProps> = ({ getPdfBlob, getEx
                                 </button>
                             </div>
                         </div>
-
-                        <p>✅ <strong>啟用 API</strong>：確保 Google Cloud 中已啟用「Google Drive API」。</p>
                     </div>
                     <button onClick={() => setShowGuide(false)} className="mt-4 w-full py-2 bg-gray-100 text-gray-700 rounded-lg text-xs font-bold">關閉說明</button>
                 </div>

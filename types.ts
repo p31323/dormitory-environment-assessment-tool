@@ -13,7 +13,6 @@ export interface ChecklistItemAnswer {
   status: 'Y' | 'N' | null;
   remarks: string;
   correctiveAction: string;
-  responsiblePerson: string;
   targetDate: string;
   actionStatus: string;
 }

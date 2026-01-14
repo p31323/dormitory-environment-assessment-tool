@@ -35,7 +35,6 @@ const App: React.FC = () => {
           status: null, 
           remarks: '', 
           correctiveAction: '', 
-          responsiblePerson: '', 
           targetDate: '', 
           actionStatus: 'pending'
         };
@@ -150,16 +149,16 @@ const App: React.FC = () => {
     });
     XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(checklistRows), "Full Checklist");
 
-    const actionRows = [[t('item'), t('correctiveAction'), t('responsiblePerson'), t('targetDate'), t('actionStatus')]];
+    const actionRows = [[t('item'), t('correctiveAction'), t('targetDate'), t('actionStatus')]];
     let hasN = false;
     Object.keys(checklistAnswers).forEach(id => {
         const ans = checklistAnswers[id];
         if (ans && ans.status === 'N') {
             hasN = true;
-            actionRows.push([id, ans.correctiveAction, ans.responsiblePerson, ans.targetDate, t('statusPending')]);
+            actionRows.push([id, ans.correctiveAction, ans.targetDate, t('statusPending')]);
         }
     });
-    if (!hasN) actionRows.push([t('noFindingsItem'), 'N/A', 'N/A', 'N/A', 'N/A']);
+    if (!hasN) actionRows.push([t('noFindingsItem'), 'N/A', 'N/A', 'N/A']);
     XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(actionRows), "Action Plan");
 
     const excelBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });

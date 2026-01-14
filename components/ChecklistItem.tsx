@@ -77,7 +77,7 @@ const ChecklistItem: React.FC<ChecklistItemProps> = ({ itemData, itemNumber, ans
 
             {/* Conditional Fields for Non-compliance */}
             {isNonCompliant && (
-                <div className="mt-4 md:pl-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:border-l-4 border-red-300 md:ml-2">
+                <div className="mt-4 md:pl-8 grid grid-cols-1 sm:grid-cols-2 gap-4 md:border-l-4 border-red-300 md:ml-2">
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">{t('correctiveAction')}</label>
                         <textarea
@@ -89,19 +89,6 @@ const ChecklistItem: React.FC<ChecklistItemProps> = ({ itemData, itemNumber, ans
                                 : 'border-gray-300 focus:ring-blue-500'
                             }`}
                             rows={3}
-                        />
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">{t('responsiblePerson')}</label>
-                        <input
-                            type="text"
-                            value={answer.responsiblePerson || ''}
-                            onChange={(e) => onAnswerChange(itemData.id, 'responsiblePerson', e.target.value)}
-                            className={`w-full text-sm px-3 py-1.5 border rounded-md shadow-sm focus:outline-none focus:ring-2 ${
-                                validationErrors[`${itemData.id}-responsiblePerson`]
-                                ? 'border-red-500 bg-red-50 focus:ring-red-500'
-                                : 'border-gray-300 focus:ring-blue-500'
-                            }`}
                         />
                     </div>
                     <div>

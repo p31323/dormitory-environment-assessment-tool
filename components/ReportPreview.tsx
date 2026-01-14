@@ -137,7 +137,6 @@ const ReportPreview: React.FC<ReportPreviewProps> = ({ report }) => {
                                         <th className={tableHeaderClass}>No.</th>
                                         <th className={tableHeaderClass}>{t('findingItem')}</th>
                                         <th className={tableHeaderClass}>{t('correctiveAction')}</th>
-                                        <th className={tableHeaderClass}>{t('responsiblePerson')}</th>
                                         <th className={tableHeaderClass}>{t('targetDate')}</th>
                                         <th className={tableHeaderClass}>{t('actionStatus')}</th>
                                     </tr>
@@ -151,7 +150,6 @@ const ReportPreview: React.FC<ReportPreviewProps> = ({ report }) => {
                                                     <td className={`${tableCellClass} font-mono text-gray-400`}>{String(index + 1).padStart(2, '0')}</td>
                                                     <td className={`${tableCellClass} font-semibold w-1/4`}><span className="text-red-500 mr-1">[{itemId}]</span>{details.description}</td>
                                                     <td className={tableCellClass}>{checklistAnswers[itemId].correctiveAction}</td>
-                                                    <td className={`${tableCellClass} font-medium`}>{checklistAnswers[itemId].responsiblePerson}</td>
                                                     <td className={`${tableCellClass} font-mono`}>{checklistAnswers[itemId].targetDate}</td>
                                                     <td className={tableCellClass}><span className="px-3 py-1 text-xs font-bold rounded-full bg-yellow-100 text-yellow-800">{t('statusPending')}</span></td>
                                                 </tr>
@@ -162,7 +160,6 @@ const ReportPreview: React.FC<ReportPreviewProps> = ({ report }) => {
                                             <td className={tableCellClass}>01</td>
                                             <td className={tableCellClass}>{t('noActionItem')}</td>
                                             <td className={tableCellClass}>{t('noActionRecommendation')}</td>
-                                            <td className={tableCellClass}>{t('noActionResponsible')}</td>
                                             <td className={tableCellClass}>{t('noActionTargetDate')}</td>
                                             <td className={tableCellClass}><span className="px-3 py-1 text-xs font-bold rounded-full bg-green-100 text-green-800">{t('noActionStatus')}</span></td>
                                         </tr>
