@@ -9,9 +9,6 @@ interface GoogleDriveUploadProps {
     baseFileName: string;
 }
 
-/** 
- * 用戶端 ID：已設定為您提供的最新版
- */
 const CLIENT_ID = '211134551544-ebes70u90l205o19p7eemcecr2mvk2u7.apps.googleusercontent.com';
 const FOLDER_ID = '11_Bdd1tKHTAR-CJ79o-0ShE5VLB3objg';
 
@@ -27,7 +24,6 @@ const GoogleDriveUpload: React.FC<GoogleDriveUploadProps> = ({ getPdfBlob, getEx
 
     const currentOrigin = window.location.origin;
 
-    // 偵測是否在 LINE 內建瀏覽器中
     useEffect(() => {
         const ua = navigator.userAgent || navigator.vendor || (window as any).opera;
         if (ua.indexOf('Line') > -1) {
@@ -44,9 +40,8 @@ const GoogleDriveUpload: React.FC<GoogleDriveUploadProps> = ({ getPdfBlob, getEx
     const handleUpload = async () => {
         if (status === 'uploading') return;
 
-        // 如果偵測到 LINE 瀏覽器，先阻擋並提示
         if (isLineBrowser) {
-            alert("⚠️ 偵測到您正在使用 LINE 內建瀏覽器。\n\n由於 Google 安全限制，LINE 瀏覽器無法進行雲端授權。\n\n請點擊畫面右下角的「...」並選擇「在預設瀏覽器中開啟」後，再重新上傳。");
+            alert(`${t('lineWarningTitle')}\n\n${t('lineWarningDesc')}`);
             return;
         }
         
@@ -144,15 +139,7 @@ const GoogleDriveUpload: React.FC<GoogleDriveUploadProps> = ({ getPdfBlob, getEx
         } catch (err: any) {
             console.error('Upload Error:', err);
             setStatus('error');
-            
-            let errorMsg = "上傳失敗。";
-            if (err.error === 'access_denied') {
-                errorMsg = "權限被拒 (403)：\n\n原因：應用程式目前處於「測試模式」，只有名單內的 Email 可登入。\n\n解決方法：請在 Google Console 點擊「發布應用程式 (PUBLISH APP)」即可取消帳戶限制。";
-            } else if (err.error === 'invalid_request') {
-                errorMsg = `授權要求無效 (400)：\n請確認 Google Console 中的「已授權 JavaScript 來源」包含：\n${currentOrigin}`;
-            }
-            
-            alert(`${errorMsg}\n\n(詳細代碼: ${err.error || 'unknown'})`);
+            alert(`${t('uploadError')}\n\n(Code: ${err.error || 'unknown'})`);
         }
     };
 
@@ -162,7 +149,7 @@ const GoogleDriveUpload: React.FC<GoogleDriveUploadProps> = ({ getPdfBlob, getEx
                 {isLineBrowser && (
                     <div className="bg-orange-50 text-orange-700 text-[10px] px-2 py-1 rounded border border-orange-200 flex items-center animate-pulse">
                         <FaCommentDots className="mr-1" />
-                        請點右下角開啟外部瀏覽器
+                        {t('lineTip')}
                     </div>
                 )}
 
@@ -174,7 +161,7 @@ const GoogleDriveUpload: React.FC<GoogleDriveUploadProps> = ({ getPdfBlob, getEx
                         className="flex items-center space-x-1 text-xs font-bold text-blue-700 bg-blue-50 px-4 py-3 rounded-xl border border-blue-200 hover:bg-blue-100 transition-all shadow-sm animate-bounce"
                     >
                         <FaExternalLinkAlt size={10} />
-                        <span>開啟備份檔案</span>
+                        <span>{t('openBackupFile')}</span>
                     </a>
                 )}
 
@@ -184,7 +171,6 @@ const GoogleDriveUpload: React.FC<GoogleDriveUploadProps> = ({ getPdfBlob, getEx
                         className={`flex items-center space-x-1 px-3 rounded-l-xl border-2 border-r-0 transition-all ${
                             uploadFormat === 'pdf' ? 'text-red-600 border-red-500 hover:bg-red-50' : 'text-green-600 border-green-500 hover:bg-green-50'
                         }`}
-                        title="選擇檔案格式"
                     >
                         {uploadFormat === 'pdf' ? <FaFilePdf /> : <FaFileExcel />}
                         <FaCaretDown size={10} />
@@ -207,14 +193,14 @@ const GoogleDriveUpload: React.FC<GoogleDriveUploadProps> = ({ getPdfBlob, getEx
                                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                 </svg>
-                                <span>上傳中...</span>
+                                <span>{t('uploading')}</span>
                             </div>
                         ) : status === 'success' ? (
-                            <><FaCheckCircle /><span>備份成功</span></>
+                            <><FaCheckCircle /><span>{t('uploadSuccess')}</span></>
                         ) : status === 'error' ? (
-                            <><FaExclamationCircle /><span>上傳重試</span></>
+                            <><FaExclamationCircle /><span>{t('uploadError')}</span></>
                         ) : (
-                            <><FaCloudUploadAlt /><span>上傳至雲端 ({uploadFormat.toUpperCase()})</span></>
+                            <><FaCloudUploadAlt /><span>{t('uploadToDrive')} ({uploadFormat.toUpperCase()})</span></>
                         )}
                     </button>
 
@@ -225,14 +211,14 @@ const GoogleDriveUpload: React.FC<GoogleDriveUploadProps> = ({ getPdfBlob, getEx
                                 className={`w-full flex items-center space-x-3 px-4 py-3 text-sm transition-colors ${uploadFormat === 'pdf' ? 'bg-red-50 text-red-700 font-bold' : 'hover:bg-gray-50 text-gray-700'}`}
                             >
                                 <FaFilePdf className="text-red-500" />
-                                <span>PDF 格式</span>
+                                <span>PDF</span>
                             </button>
                             <button 
                                 onClick={() => { setUploadFormat('excel'); setShowDropdown(false); }}
                                 className={`w-full flex items-center space-x-3 px-4 py-3 text-sm transition-colors ${uploadFormat === 'excel' ? 'bg-green-50 text-green-700 font-bold' : 'hover:bg-gray-50 text-gray-700'}`}
                             >
                                 <FaFileExcel className="text-green-500" />
-                                <span>Excel 格式</span>
+                                <span>Excel</span>
                             </button>
                         </div>
                     )}
@@ -249,28 +235,32 @@ const GoogleDriveUpload: React.FC<GoogleDriveUploadProps> = ({ getPdfBlob, getEx
             {showGuide && (
                 <div className="bg-white border-2 border-blue-600 rounded-2xl p-6 shadow-2xl max-w-md text-left animate-fade-in z-50 overflow-y-auto max-h-[80vh]">
                     <h4 className="text-sm font-black text-gray-800 mb-3 flex items-center border-b pb-2">
-                        💡 如何解決 LINE 無法上傳問題
+                        💡 {t('guideTitle')}
                     </h4>
                     <div className="text-[11px] text-gray-600 space-y-4">
-                        <div className="bg-red-50 p-3 rounded-lg border border-red-200">
-                            <p className="font-bold text-red-700 mb-1 flex items-center">
-                                <FaCommentDots className="mr-2"/> LINE 瀏覽器限制：
-                            </p>
-                            <p>Google 禁止在 LINE 的內建瀏覽器登入。請點擊 LINE 畫面右下角的「...」圖示，選擇 **「在預設瀏覽器中開啟」** 後再進行上傳。</p>
-                        </div>
+                        {isLineBrowser && (
+                            <div className="bg-red-50 p-3 rounded-lg border border-red-200">
+                                <p className="font-bold text-red-700 mb-1 flex items-center">
+                                    <FaCommentDots className="mr-2"/> {t('lineWarningTitle')}：
+                                </p>
+                                <p>{t('lineWarningDesc')}</p>
+                            </div>
+                        )}
 
                         <div className="bg-orange-50 p-3 rounded-lg border border-orange-200">
                             <p className="font-bold text-orange-700 mb-1 flex items-center">
-                                <FaLockOpen className="mr-2"/> 解除 403 存取限制教學：
+                                <FaLockOpen className="mr-2"/> {t('guideAuth403Title')}：
                             </p>
                             <ol className="list-decimal list-inside space-y-1 mt-1 text-orange-800 font-medium">
-                                <li>前往 Google Console 的「OAuth 同意畫面」。</li>
-                                <li>點擊「發布狀態」下的 **發布應用程式 (PUBLISH APP)**。</li>
+                                <li>{t('guideAuth403Step1')}</li>
+                                <li>{t('guideAuth403Step2')}</li>
                             </ol>
+                            <p className="mt-2 text-[10px] text-orange-600 italic">※ {t('guideAuth403Note')}</p>
                         </div>
 
                         <div className="bg-blue-50 p-3 rounded-lg border border-blue-100">
-                            <p className="font-bold text-blue-700 mb-1">🌐 已授權 JavaScript 來源：</p>
+                            <p className="font-bold text-blue-700 mb-1">{t('guideOriginTitle')}：</p>
+                            <p className="text-[10px] text-gray-500 mb-2">{t('guideOriginDesc')}</p>
                             <div className="flex items-center space-x-2 bg-white p-2 rounded border border-blue-200">
                                 <code className="flex-grow text-[10px] break-all font-mono text-gray-800">{currentOrigin}</code>
                                 <button onClick={copyToClipboard} className={`p-2 rounded ${copyFeedback ? 'bg-green-500 text-white' : 'bg-blue-100 text-blue-600'}`}>
@@ -279,7 +269,7 @@ const GoogleDriveUpload: React.FC<GoogleDriveUploadProps> = ({ getPdfBlob, getEx
                             </div>
                         </div>
                     </div>
-                    <button onClick={() => setShowGuide(false)} className="mt-4 w-full py-2 bg-gray-100 text-gray-700 rounded-lg text-xs font-bold">關閉說明</button>
+                    <button onClick={() => setShowGuide(false)} className="mt-4 w-full py-2 bg-gray-100 text-gray-700 rounded-lg text-xs font-bold">{t('closeButton')}</button>
                 </div>
             )}
         </div>

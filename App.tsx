@@ -9,6 +9,7 @@ import Checklist from './components/Checklist';
 import ImageUpload from './components/ImageUpload';
 import ReportPreview from './components/ReportPreview';
 import GoogleDriveUpload from './components/GoogleDriveUpload';
+import DataManagement from './components/DataManagement';
 import ValidationErrorModal from './components/ValidationErrorModal';
 import { FaFileSignature, FaFilePdf, FaFileExcel } from 'react-icons/fa';
 import { LanguageContext } from './contexts/LanguageContext';
@@ -114,6 +115,19 @@ const App: React.FC = () => {
             photos: [...photos],
         });
     }
+  };
+
+  const handleClearAll = () => {
+    setReportInfo({
+        checkDate: new Date().toISOString().split('T')[0],
+        inspector: '',
+        dormitoryName: '',
+        dormitoryManagement: '',
+    });
+    setChecklistAnswers(createInitialAnswers());
+    setPhotos([]);
+    setGeneratedReport(null);
+    localStorage.removeItem(STORAGE_KEY);
   };
 
   const generateExcelBlob = async (): Promise<Blob | null> => {
@@ -246,6 +260,7 @@ const App: React.FC = () => {
         </header>
 
         <main className="space-y-8">
+          <DataManagement onClear={handleClearAll} />
           <ReportInfoForm reportInfo={reportInfo} setReportInfo={setReportInfo} validationErrors={validationErrors} />
           <Checklist checklistAnswers={checklistAnswers} setChecklistAnswers={setChecklistAnswers} validationErrors={validationErrors} />
           <ImageUpload photos={photos} setPhotos={setPhotos} />
