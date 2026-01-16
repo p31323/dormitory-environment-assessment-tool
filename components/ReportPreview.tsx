@@ -29,19 +29,19 @@ const ReportPreview: React.FC<ReportPreviewProps> = ({ report }) => {
     
     const tableHeaderClass = "px-4 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider bg-gray-50 border-b-2 border-gray-200";
     const tableCellClass = "px-4 py-4 text-sm text-gray-800 leading-relaxed";
-    const tableRowClass = "border-b border-gray-100 last:border-none";
+    const tableRowClass = "border-b border-gray-100 last:border-none break-inside-avoid page-break-inside-avoid";
 
     return (
-        <div id="full-report-container" className="bg-white shadow-sm p-8 sm:p-12 md:p-16 border border-gray-100 font-sans mx-auto">
-            {/* Main Content Section (Headers + Sections 1-4) */}
-            <div id="report-main-content" className="space-y-12">
-                <header className="text-center border-b-2 border-gray-100 pb-8">
+        <div id="full-report-container" className="bg-white p-8 sm:p-12 md:p-16 border border-gray-100 font-sans mx-auto" style={{ width: '1000px' }}>
+            {/* 區塊 A: 報告主體 (1.概述 至 4.總結) */}
+            <div id="report-main-section" className="space-y-12 bg-white">
+                <header className="text-center border-b-2 border-gray-100 pb-8 break-inside-avoid">
                     <h2 className="text-3xl font-black text-gray-900 mb-2">{t('reportTemplateTitle')}</h2>
                     <p className="text-gray-500 uppercase tracking-widest text-xs">{t('subtitle')}</p>
                 </header>
                 
-                {/* Basic Info */}
-                <section className="bg-gray-50 p-6 rounded-xl border border-gray-100">
+                {/* 基本資訊 */}
+                <section className="bg-gray-50 p-6 rounded-xl border border-gray-100 break-inside-avoid">
                     <div className="grid grid-cols-2 gap-x-12 gap-y-4 text-sm">
                         <div className="flex justify-between border-b border-gray-200 pb-1">
                             <span className="font-bold text-gray-500">{t('reportNo')}</span>
@@ -59,15 +59,15 @@ const ReportPreview: React.FC<ReportPreviewProps> = ({ report }) => {
                             <span className="font-bold text-gray-500">{t('inspector')}</span>
                             <span className="text-gray-900">{reportInfo.inspector}</span>
                         </div>
-                        <div className="flex justify-between border-b border-gray-200 pb-1">
+                        <div className="flex justify-between border-b border-gray-200 pb-1 col-span-2">
                             <span className="font-bold text-gray-500">{t('dormitoryManagement')}</span>
                             <span className="text-gray-900">{reportInfo.dormitoryManagement}</span>
                         </div>
                     </div>
                 </section>
 
-                {/* 1. Overview */}
-                <section>
+                {/* 1. 概述 */}
+                <section className="break-inside-avoid">
                     <h3 className="text-xl font-black text-gray-900 mb-4 flex items-center">
                         <span className="w-8 h-8 bg-blue-600 text-white rounded-lg flex items-center justify-center mr-3 text-sm">1</span>
                         {t('overviewSectionTitle')}
@@ -75,8 +75,8 @@ const ReportPreview: React.FC<ReportPreviewProps> = ({ report }) => {
                     <p className="text-gray-700 text-base leading-relaxed pl-11">{t('overviewText')}</p>
                 </section>
 
-                {/* 2. Findings Table */}
-                <section>
+                {/* 2. 檢查發現 */}
+                <section className="break-inside-avoid">
                     <h3 className="text-xl font-black text-gray-900 mb-4 flex items-center">
                         <span className="w-8 h-8 bg-blue-600 text-white rounded-lg flex items-center justify-center mr-3 text-sm">2</span>
                         {t('findingsSectionTitle')}
@@ -123,8 +123,8 @@ const ReportPreview: React.FC<ReportPreviewProps> = ({ report }) => {
                     </div>
                 </section>
 
-                {/* 3. Action Plan Table */}
-                <section>
+                {/* 3. 行動計畫 */}
+                <section className="break-inside-avoid">
                     <h3 className="text-xl font-black text-gray-900 mb-4 flex items-center">
                         <span className="w-8 h-8 bg-blue-600 text-white rounded-lg flex items-center justify-center mr-3 text-sm">3</span>
                         {t('actionPlanSectionTitle')}
@@ -170,8 +170,8 @@ const ReportPreview: React.FC<ReportPreviewProps> = ({ report }) => {
                     </div>
                 </section>
 
-                {/* 4. Conclusion */}
-                <section className="bg-gray-50 p-8 rounded-2xl border-2 border-dashed border-gray-200">
+                {/* 4. 總結 */}
+                <section className="bg-gray-50 p-8 rounded-2xl border-2 border-dashed border-gray-200 break-inside-avoid">
                     <h3 className="text-xl font-black text-gray-900 mb-4 flex items-center">
                         <span className="w-8 h-8 bg-blue-600 text-white rounded-lg flex items-center justify-center mr-3 text-sm">4</span>
                         {t('conclusionSectionTitle')}
@@ -182,8 +182,8 @@ const ReportPreview: React.FC<ReportPreviewProps> = ({ report }) => {
                 </section>
             </div>
             
-            {/* 5. Attachments Section - Starts on a new page in PDF */}
-            <div id="report-attachments-section" className="mt-16 pt-16 border-t-4 border-gray-100">
+            {/* 區塊 B: 5. 附件照片 (強制換頁處理) */}
+            <div id="report-attachments-section" className="mt-16 pt-16 border-t-4 border-gray-100 bg-white min-h-[500px]">
                 <section>
                     <h3 className="text-xl font-black text-gray-900 mb-8 flex items-center">
                         <span className="w-8 h-8 bg-blue-600 text-white rounded-lg flex items-center justify-center mr-3 text-sm">5</span>
@@ -193,7 +193,7 @@ const ReportPreview: React.FC<ReportPreviewProps> = ({ report }) => {
                         {photos.length > 0 ? (
                             <div className="grid grid-cols-2 gap-8">
                                 {photos.map((photo, index) => (
-                                    <div key={index} className="border-4 border-white shadow-lg rounded-2xl overflow-hidden ring-1 ring-gray-200">
+                                    <div key={index} className="border-4 border-white shadow-lg rounded-2xl overflow-hidden ring-1 ring-gray-200 break-inside-avoid page-break-inside-avoid flex flex-col">
                                         <img src={photo} alt={`Site Photo ${index + 1}`} className="w-full h-64 object-cover" />
                                         <div className="bg-gray-50 p-3 text-center text-xs text-gray-500 font-bold border-t border-gray-100">
                                             {t('onSitePhotos')} - {index + 1}

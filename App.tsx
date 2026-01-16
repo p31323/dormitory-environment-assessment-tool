@@ -179,38 +179,65 @@ const App: React.FC = () => {
     return new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
   };
 
+  /**
+   * PDF generation with horizontal margins (左右留白).
+   * 1. Uses html2canvas for multilingual support (fixes garbled text).
+   * 2. Adds 10mm margins on both left and right sides for a clean professional look.
+   */
   const generatePdfBlob = async (): Promise<Blob | null> => {
-    const reportElement = document.getElementById('full-report-container');
-    if (!reportElement || !window.html2canvas || !window.jspdf) return null;
+    const mainEl = document.getElementById('report-main-section');
+    const attachEl = document.getElementById('report-attachments-section');
+    if (!mainEl || !attachEl || !window.html2canvas || !window.jspdf) return null;
 
     try {
-        const canvas = await window.html2canvas(reportElement, {
-            scale: 2,
-            useCORS: true,
-            logging: false,
-            windowWidth: reportElement.scrollWidth,
-            windowHeight: reportElement.scrollHeight
-        });
-
-        const imgData = canvas.toDataURL('image/jpeg', 0.95);
         const pdf = new window.jspdf.jsPDF('p', 'mm', 'a4');
-        const pdfWidth = pdf.internal.pageSize.getWidth();
-        const pdfHeight = pdf.internal.pageSize.getHeight();
-        const imgWidth = pdfWidth;
-        const imgHeight = (canvas.height * imgWidth) / canvas.width;
+        const pdfWidth = pdf.internal.pageSize.getWidth(); // 210mm
+        const pdfHeight = pdf.internal.pageSize.getHeight(); // 297mm
+        
+        // Define margins (10mm on each side)
+        const marginX = 10; 
+        const contentWidth = pdfWidth - (marginX * 2); // 190mm
 
-        let heightLeft = imgHeight;
-        let position = 0;
+        const addSectionToPdf = async (element: HTMLElement, addNewPageBefore: boolean = false) => {
+            const canvas = await window.html2canvas(element, {
+                scale: 2,
+                useCORS: true,
+                logging: false,
+                width: 1000,
+                windowWidth: 1000,
+                backgroundColor: '#ffffff'
+            });
 
-        pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight);
-        heightLeft -= pdfHeight;
+            const imgData = canvas.toDataURL('image/jpeg', 0.95);
+            
+            // Calculate height while maintaining aspect ratio based on the new contentWidth
+            const imgHeight = (canvas.height * contentWidth) / canvas.width;
+            
+            if (addNewPageBefore) {
+                pdf.addPage();
+            }
 
-        while (heightLeft >= 0) {
-            position = heightLeft - imgHeight;
-            pdf.addPage();
-            pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight);
+            let heightLeft = imgHeight;
+            let positionY = 0;
+
+            // First page of this section - Place at marginX to create left white space
+            pdf.addImage(imgData, 'JPEG', marginX, positionY, contentWidth, imgHeight);
             heightLeft -= pdfHeight;
-        }
+
+            // Subsequent pages if section overflows
+            while (heightLeft > 0) {
+                positionY -= pdfHeight;
+                pdf.addPage();
+                pdf.addImage(imgData, 'JPEG', marginX, positionY, contentWidth, imgHeight);
+                heightLeft -= pdfHeight;
+            }
+        };
+
+        // Render Main Content (Section 1-4)
+        await addSectionToPdf(mainEl);
+        
+        // Render Attachments (Section 5) starting on a new page
+        await addSectionToPdf(attachEl, true);
 
         return pdf.output('blob');
     } catch (error) {
