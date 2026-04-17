@@ -223,55 +223,7 @@ const GoogleDriveUpload: React.FC<GoogleDriveUploadProps> = ({ getPdfBlob, getEx
                         </div>
                     )}
                 </div>
-
-                <button 
-                    onClick={() => setShowGuide(!showGuide)}
-                    className={`p-3 rounded-full transition-colors ${showGuide ? 'bg-blue-100 text-blue-600' : 'text-gray-400 hover:text-gray-600'}`}
-                >
-                    <FaQuestionCircle size={18} />
-                </button>
             </div>
-
-            {showGuide && (
-                <div className="bg-white border-2 border-blue-600 rounded-2xl p-6 shadow-2xl max-w-md text-left animate-fade-in z-50 overflow-y-auto max-h-[80vh]">
-                    <h4 className="text-sm font-black text-gray-800 mb-3 flex items-center border-b pb-2">
-                        💡 {t('guideTitle')}
-                    </h4>
-                    <div className="text-[11px] text-gray-600 space-y-4">
-                        {isLineBrowser && (
-                            <div className="bg-red-50 p-3 rounded-lg border border-red-200">
-                                <p className="font-bold text-red-700 mb-1 flex items-center">
-                                    <FaCommentDots className="mr-2"/> {t('lineWarningTitle')}：
-                                </p>
-                                <p>{t('lineWarningDesc')}</p>
-                            </div>
-                        )}
-
-                        <div className="bg-orange-50 p-3 rounded-lg border border-orange-200">
-                            <p className="font-bold text-orange-700 mb-1 flex items-center">
-                                <FaLockOpen className="mr-2"/> {t('guideAuth403Title')}：
-                            </p>
-                            <ol className="list-decimal list-inside space-y-1 mt-1 text-orange-800 font-medium">
-                                <li>{t('guideAuth403Step1')}</li>
-                                <li>{t('guideAuth403Step2')}</li>
-                            </ol>
-                            <p className="mt-2 text-[10px] text-orange-600 italic">※ {t('guideAuth403Note')}</p>
-                        </div>
-
-                        <div className="bg-blue-50 p-3 rounded-lg border border-blue-100">
-                            <p className="font-bold text-blue-700 mb-1">{t('guideOriginTitle')}：</p>
-                            <p className="text-[10px] text-gray-500 mb-2">{t('guideOriginDesc')}</p>
-                            <div className="flex items-center space-x-2 bg-white p-2 rounded border border-blue-200">
-                                <code className="flex-grow text-[10px] break-all font-mono text-gray-800">{currentOrigin}</code>
-                                <button onClick={copyToClipboard} className={`p-2 rounded ${copyFeedback ? 'bg-green-500 text-white' : 'bg-blue-100 text-blue-600'}`}>
-                                    {copyFeedback ? <FaCheckCircle /> : <FaCopy />}
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                    <button onClick={() => setShowGuide(false)} className="mt-4 w-full py-2 bg-gray-100 text-gray-700 rounded-lg text-xs font-bold">{t('closeButton')}</button>
-                </div>
-            )}
         </div>
     );
 };
