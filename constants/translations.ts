@@ -47,7 +47,7 @@ export const translations: Record<LanguageCode, Translation> = {
         addPhotos: '上傳現場照片',
         uploadHint: '點擊或拖拽照片至此處 (最多 6 張)',
         deletePhoto: '刪除',
-        reportTemplateTitle: '外籍移工宿舍環境評估報告範本',
+        reportTemplateTitle: '外籍移工宿舍環境評估報告',
         reportNo: '報告編號',
         overviewSectionTitle: '1. 概述 (Overview)',
         findingsSectionTitle: '2. 檢查發現 (Findings)',

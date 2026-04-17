@@ -24,7 +24,7 @@ const ChecklistItem: React.FC<ChecklistItemProps> = ({ itemData, itemNumber, ans
 
     const StatusButton = ({ value, label, color, Icon }: { value: 'Y' | 'N', label: string, color: string, Icon: React.ElementType }) => {
         const isSelected = answer.status === value;
-        const baseClasses = `w-full flex items-center justify-center space-x-2 text-sm font-bold py-3 px-4 rounded-lg border-2 transition-all duration-200 cursor-pointer`;
+        const baseClasses = `w-full flex items-center justify-center space-x-2 text-sm font-bold py-3 px-3 rounded-lg border-2 transition-all duration-200 cursor-pointer min-h-[64px]`;
         const colorClasses = isSelected
             ? `bg-${color}-500 border-${color}-500 text-white shadow-md`
             : `bg-white border-gray-300 text-gray-600 hover:border-${color}-400 hover:text-${color}-600`;
@@ -38,8 +38,10 @@ const ChecklistItem: React.FC<ChecklistItemProps> = ({ itemData, itemNumber, ans
                     onChange={() => onAnswerChange(itemData.id, 'status', value)}
                     className="sr-only" // Hide the actual radio button
                 />
-                <Icon className={`text-base ${isSelected ? 'text-white' : `text-${color}-500`}`} />
-                <span>{label}</span>
+                <div className="flex-shrink-0">
+                    <Icon className={`${isSelected ? 'text-white' : `text-${color}-600`} text-2xl drop-shadow-sm`} />
+                </div>
+                <span className="leading-tight text-center">{label}</span>
             </label>
         );
     };
