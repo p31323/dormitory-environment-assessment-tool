@@ -73,7 +73,12 @@ const App: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ reportInfo, checklistAnswers, photos, language }));
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ reportInfo, checklistAnswers, photos, language }));
+    } catch (e) {
+      console.error("Save to localStorage failed:", e);
+      // If it fails, it's likely due to quota. We don't want to crash the app.
+    }
   }, [reportInfo, checklistAnswers, photos, language]);
   
   const t = useCallback((key: keyof Translation, replacements?: Record<string, string | number>): string => {
